@@ -1,0 +1,1726 @@
+<div id="app"></div>
+
+<style>
+  :root {
+    --bg: #faf7f2;
+    --card: #ffffff;
+    --ink: #2a2a2a;
+    --muted: #8a8378;
+    --line: #ece6dc;
+    --accent-a: #e07856;
+    --accent-b: #6b8e9e;
+    --gold: #d4a84b;
+    --green: #7a9e5f;
+    --soft-a: #fce8df;
+    --soft-b: #dee9ed;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+    min-height: 100vh;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .who-badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  .who-a { background: var(--soft-a); color: var(--accent-a); }
+  .who-b { background: var(--soft-b); color: var(--accent-b); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+
+  .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .question {
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 18px;
+  }
+
+  .options {
+    display: grid;
+    gap: 10px;
+  }
+
+  .option {
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--ink);
+    transition: all 0.15s;
+  }
+
+  .option:hover { border-color: var(--ink); }
+  .option.selected {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: white;
+  }
+  .option.disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .step-hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 14px 0 8px;
+    text-align: center;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--ink);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 12px;
+  }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--line);
+  }
+  .btn-small {
+    padding: 8px 14px;
+    width: auto;
+    font-size: 13px;
+    margin-top: 0;
+  }
+
+  .nav {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .nav button {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--muted);
+  }
+  .nav button.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+
+  .score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .score-box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+  }
+  .score-num {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .score-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+  }
+
+  .reveal-banner {
+    background: var(--soft-a);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--accent-a);
+    font-weight: 600;
+  }
+  .reveal-banner.match { background: #e6f0db; color: var(--green); }
+
+  .reveal-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+    align-items: center;
+  }
+  .reveal-row:last-child { border-bottom: none; }
+  .reveal-who { font-weight: 600; font-size: 12px; }
+  .reveal-mark { font-size: 14px; }
+  .reveal-mark.correct { color: var(--green); }
+  .reveal-mark.wrong { color: var(--muted); }
+
+  .history-item {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .history-q { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .history-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .history-detail { font-size: 13px; line-height: 1.6; }
+  .pill {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-left: 4px;
+    font-weight: 600;
+  }
+  .pill-guess { background: #f3e8c7; color: #8a6d1e; }
+  .pill-sync { background: #dceacb; color: #4d6b35; }
+
+  .input, .textarea {
+    width: 100%;
+    border: 1.5px solid var(--line);
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .input:focus, .textarea:focus { outline: none; border-color: var(--ink); }
+
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .who-pick {
+    text-align: center;
+    padding: 30px 0;
+  }
+  .who-pick h2 {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+  .who-pick p {
+    color: var(--muted);
+    margin-bottom: 30px;
+    font-size: 14px;
+  }
+  .who-options {
+    display: grid;
+    gap: 12px;
+  }
+  .who-option {
+    padding: 20px;
+    border-radius: 14px;
+    border: 2px solid var(--line);
+    background: var(--card);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .who-option.a { border-color: var(--accent-a); color: var(--accent-a); }
+  .who-option.b { border-color: var(--accent-b); color: var(--accent-b); }
+
+  .waiting {
+    text-align: center;
+    padding: 30px 20px;
+  }
+  .waiting-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  .waiting-text {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .waiting-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .name-edit {
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-family: inherit;
+    text-decoration: underline;
+  }
+
+  .swap-btn {
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-family: inherit;
+    text-decoration: underline;
+    margin-top: 8px;
+  }
+
+  .info-tip {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+</style>
+
+<script type="module">
+  // ============ Firebase 初始化 ============
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, onSnapshot, getDoc
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAd1i8aP2XTtJ_CdVlwrSkF_1gUWfeb-q8",
+    authDomain: "mochi-game-c9b8f.firebaseapp.com",
+    projectId: "mochi-game-c9b8f",
+    storageBucket: "mochi-game-c9b8f.firebasestorage.app",
+    messagingSenderId: "271302596753",
+    appId: "1:271302596753:web:4d70fff5f8aa02906f8730"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
+
+  // ============ 內建題庫（依分類）============
+  const CATEGORIES = {
+    daily:   { name: '日常生活', color: '#e07856', bg: '#fce8df' },
+    couple:  { name: '情侶向',   color: '#c75d7e', bg: '#f7dde5' },
+    friend:  { name: '朋友向',   color: '#6b8e9e', bg: '#dee9ed' },
+    deep:    { name: '深度問題', color: '#7b6aa1', bg: '#e4dff0' },
+    funny:   { name: '無厘頭',   color: '#d4a84b', bg: '#f7ebcb' },
+    taste:   { name: '口味偏好', color: '#7a9e5f', bg: '#e0ecd2' }
+  };
+
+    const BUILTIN_QUESTIONS = [
+    // ============ 日常生活 (60) ============
+    { cat: 'daily', q: "如果只能選一個當早餐", a: "鹹的（蛋餅、飯糰）", b: "甜的（鬆餅、麵包）" },
+    { cat: 'daily', q: "週末理想活動", a: "出門走走透氣", b: "在家躺著耍廢" },
+    { cat: 'daily', q: "睡覺一定要", a: "完全黑", b: "有點微光" },
+    { cat: 'daily', q: "去新餐廳會", a: "點招牌", b: "點沒吃過的" },
+    { cat: 'daily', q: "看電影選位置", a: "中間靠前", b: "後排角落" },
+    { cat: 'daily', q: "拍照習慣", a: "自拍", b: "拍風景" },
+    { cat: 'daily', q: "排隊買的東西", a: "願意排", b: "絕對不排" },
+    { cat: 'daily', q: "早睡早起 vs 晚睡晚起", a: "早睡早起", b: "晚睡晚起" },
+    { cat: 'daily', q: "看書習慣", a: "紙本", b: "電子書" },
+    { cat: 'daily', q: "手機通知", a: "全開", b: "幾乎全關" },
+    { cat: 'daily', q: "如果迷路了", a: "馬上查地圖", b: "先走走看" },
+    { cat: 'daily', q: "穿衣風格偏向", a: "舒服為主", b: "好看為主" },
+    { cat: 'daily', q: "洗澡時間", a: "早上洗", b: "晚上洗" },
+    { cat: 'daily', q: "刷牙方式", a: "電動牙刷", b: "傳統牙刷" },
+    { cat: 'daily', q: "出門前", a: "前一晚就準備好", b: "出門前才弄" },
+    { cat: 'daily', q: "通勤習慣", a: "聽音樂或 podcast", b: "什麼都不聽" },
+    { cat: 'daily', q: "傘的態度", a: "永遠帶著", b: "下雨才買便利商店的" },
+    { cat: 'daily', q: "看 YouTube", a: "2 倍速播放", b: "正常速度" },
+    { cat: 'daily', q: "鬧鐘", a: "一響就起", b: "貪睡好幾次" },
+    { cat: 'daily', q: "睡前一定要", a: "滑手機", b: "什麼都不做直接睡" },
+    { cat: 'daily', q: "走路速度", a: "很快", b: "悠悠地走" },
+    { cat: 'daily', q: "錢包/卡片", a: "整齊分類", b: "全部塞一起" },
+    { cat: 'daily', q: "看電視/影集", a: "邊吃飯邊看", b: "專心看不做別的" },
+    { cat: 'daily', q: "睡覺姿勢", a: "側睡", b: "仰睡或趴睡" },
+    { cat: 'daily', q: "搭電梯按錯了", a: "直接出去再進來", b: "假裝沒事" },
+    { cat: 'daily', q: "計畫好的事突然取消", a: "鬆一口氣", b: "覺得有點失落" },
+    { cat: 'daily', q: "便利商店店員問你要不要袋子", a: "永遠自備袋", b: "看心情買" },
+    { cat: 'daily', q: "看到捷運博愛座空著", a: "還是去坐", b: "寧願站著" },
+    { cat: 'daily', q: "出門檢查東西的方式", a: "在腦中清單跑一遍", b: "用手摸口袋" },
+    { cat: 'daily', q: "洗衣服頻率", a: "湊一桶才洗", b: "每天/兩天洗一次" },
+    { cat: 'daily', q: "上廁所喜歡", a: "帶手機進去", b: "純解放不分心" },
+    { cat: 'daily', q: "冷氣溫度偏好", a: "23 度以下", b: "26 度以上" },
+    { cat: 'daily', q: "看時間", a: "看手機", b: "看手錶/牆上的鐘" },
+    { cat: 'daily', q: "鞋子穿脫", a: "鞋帶綁好的不解開硬塞", b: "好好解開再穿" },
+    { cat: 'daily', q: "桌面整理", a: "整齊乾淨派", b: "亂中有序派" },
+    { cat: 'daily', q: "聽到不熟的歌", a: "馬上 Shazam", b: "聽過就算了" },
+    { cat: 'daily', q: "拿到收據", a: "順手丟掉", b: "收著對發票" },
+    { cat: 'daily', q: "杯子用法", a: "一天就一個重複用", b: "喝什麼換什麼" },
+    { cat: 'daily', q: "切水果", a: "削皮的", b: "連皮吃的" },
+    { cat: 'daily', q: "飯後", a: "馬上洗碗", b: "等一下再洗" },
+    { cat: 'daily', q: "出門前照鏡子", a: "看好幾遍", b: "看一眼就走" },
+    { cat: 'daily', q: "看到地上零錢", a: "撿起來", b: "懶得彎腰" },
+    { cat: 'daily', q: "走樓梯/電梯", a: "能走樓梯就走", b: "永遠搭電梯" },
+    { cat: 'daily', q: "搭車滑手機", a: "會暈", b: "完全不會" },
+    { cat: 'daily', q: "點外送", a: "常常點", b: "盡量不點" },
+    { cat: 'daily', q: "領發票對中獎", a: "每期都對", b: "從來沒對過" },
+    { cat: 'daily', q: "看時鐘格式", a: "用 24 小時制", b: "用 12 小時制" },
+    { cat: 'daily', q: "通訊軟體", a: "已讀馬上回", b: "看心情" },
+    { cat: 'daily', q: "貼圖使用頻率", a: "每天用", b: "幾乎不用" },
+    { cat: 'daily', q: "看到很長的訊息", a: "認真讀完", b: "先掃過大概" },
+    { cat: 'daily', q: "睡前手機", a: "充電放遠一點", b: "放枕頭旁邊" },
+    { cat: 'daily', q: "下雨天", a: "覺得很有氣氛", b: "覺得很麻煩" },
+    { cat: 'daily', q: "一個人吃飯", a: "可以接受", b: "盡量找伴" },
+    { cat: 'daily', q: "看到喜歡的店打折", a: "馬上衝", b: "想一下再買" },
+    { cat: 'daily', q: "包包", a: "什麼都帶（求安心）", b: "越輕越好" },
+    { cat: 'daily', q: "新環境睡眠", a: "睡不好", b: "倒頭就睡" },
+    { cat: 'daily', q: "選衣服", a: "前一天決定好", b: "起床看心情" },
+    { cat: 'daily', q: "看影片字幕", a: "一定要開", b: "可以不開" },
+    { cat: 'daily', q: "聽到別人講悄悄話", a: "很想知道", b: "完全沒興趣" },
+    { cat: 'daily', q: "新買的東西", a: "馬上拆來用", b: "捨不得拆放著" },
+  
+    // ============ 情侶向 (50) ============
+    { cat: 'couple', q: "比較喜歡的約會", a: "在家一起耍廢", b: "出去走走" },
+    { cat: 'couple', q: "吵架後比較希望", a: "馬上談清楚", b: "先各自冷靜" },
+    { cat: 'couple', q: "紀念日比較想要", a: "驚喜安排", b: "一起討論做什麼" },
+    { cat: 'couple', q: "如果對方睡到一半磨牙", a: "輕輕推一下", b: "戴耳塞繼續睡" },
+    { cat: 'couple', q: "情人節想收到", a: "實用的禮物", b: "有心意的小物" },
+    { cat: 'couple', q: "一起追劇習慣", a: "一定要等對方", b: "誰先睡誰先看" },
+    { cat: 'couple', q: "比較在意對方", a: "記得重要日子", b: "每天說早安晚安" },
+    { cat: 'couple', q: "如果對方加班晚回家", a: "等他一起吃", b: "先自己吃" },
+    { cat: 'couple', q: "睡覺習慣", a: "抱著睡", b: "各睡各的不要互相干擾" },
+    { cat: 'couple', q: "吃飯時", a: "想吃對方碗裡的", b: "我的就是我的" },
+    { cat: 'couple', q: "出門牽手", a: "一直牽", b: "看情況" },
+    { cat: 'couple', q: "對方換新髮型/穿搭", a: "馬上發現", b: "對方提了才看到" },
+    { cat: 'couple', q: "看電影哭點", a: "我比較容易哭", b: "對方比較容易哭" },
+    { cat: 'couple', q: "如果意見不合", a: "據理力爭到底", b: "讓對方一步" },
+    { cat: 'couple', q: "對方生病時希望", a: "被照顧黏緊緊", b: "讓我自己靜靜" },
+    { cat: 'couple', q: "傳訊息頻率", a: "一整天都會聊", b: "重要的事再說" },
+    { cat: 'couple', q: "對方手機密碼", a: "知道", b: "不知道也不想知道" },
+    { cat: 'couple', q: "公開放閃", a: "OK 啊", b: "覺得有點不好意思" },
+    { cat: 'couple', q: "假日喜歡", a: "整天黏在一起", b: "各做各的也很好" },
+    { cat: 'couple', q: "對方生日", a: "提早一個月開始想", b: "前幾天才開始準備" },
+    { cat: 'couple', q: "如果只剩一個小時的電量", a: "傳給對方", b: "省著自己用" },
+    { cat: 'couple', q: "對方說「沒事」", a: "知道一定有事", b: "選擇相信" },
+    { cat: 'couple', q: "戀愛中比較像", a: "理性派", b: "感性派" },
+    { cat: 'couple', q: "拌嘴後", a: "等對方先低頭", b: "我先軟下來" },
+    { cat: 'couple', q: "聽到甜言蜜語", a: "覺得肉麻", b: "受用無比" },
+    { cat: 'couple', q: "對方加班/出差", a: "想念到不行", b: "正好享受獨處" },
+    { cat: 'couple', q: "情人吵架後的擁抱", a: "馬上抱抱和好", b: "等氣消了才願意抱" },
+    { cat: 'couple', q: "如果對方臨時要見前任", a: "說一聲就好", b: "希望被告知細節" },
+    { cat: 'couple', q: "結婚後想要", a: "兩人世界", b: "有小孩" },
+    { cat: 'couple', q: "理想的求婚", a: "盛大有儀式感", b: "私密兩人的" },
+    { cat: 'couple', q: "對方說「你決定就好」", a: "真的代表都可以", b: "其實有期待答案" },
+    { cat: 'couple', q: "重要決定希望", a: "兩人一起做", b: "尊重各自決定" },
+    { cat: 'couple', q: "見對方家人", a: "緊張到睡不著", b: "輕鬆面對" },
+    { cat: 'couple', q: "對方做家事", a: "希望主動分工", b: "我自己做比較放心" },
+    { cat: 'couple', q: "理財方式", a: "完全共有", b: "各自管自己的" },
+    { cat: 'couple', q: "希望對方先學會的", a: "煮飯", b: "修東西" },
+    { cat: 'couple', q: "如果對方忘了紀念日", a: "會很介意", b: "提醒一下就算了" },
+    { cat: 'couple', q: "情人節想要的活動", a: "好好吃一頓", b: "做平常不做的事" },
+    { cat: 'couple', q: "對方打呼", a: "睡得著", b: "很想踢他" },
+    { cat: 'couple', q: "兩人旅行", a: "我來規劃", b: "對方來規劃" },
+    { cat: 'couple', q: "出門前對方在化妝/打理", a: "耐心等", b: "想催他快一點" },
+    { cat: 'couple', q: "看到對方跟異性朋友很好", a: "完全 OK", b: "有點在意" },
+    { cat: 'couple', q: "如果只能選一樣", a: "對方每天記得早安晚安", b: "對方每年記得紀念日" },
+    { cat: 'couple', q: "兩人都很累時", a: "外食解決", b: "簡單煮個泡麵也好" },
+    { cat: 'couple', q: "睡前", a: "聊一下今天", b: "各看各的手機" },
+    { cat: 'couple', q: "理想伴侶的特質", a: "有趣幽默", b: "穩重可靠" },
+    { cat: 'couple', q: "看到對方哭", a: "馬上抱緊", b: "先讓他發洩" },
+    { cat: 'couple', q: "對方喜歡的東西我不懂", a: "努力學著一起喜歡", b: "保留各自的興趣" },
+    { cat: 'couple', q: "兩人最理想的家", a: "市區有很多店", b: "郊區安靜開闊" },
+    { cat: 'couple', q: "希望對方記得的細節", a: "我的喜好和忌口", b: "我講過的小故事" },
+  
+    // ============ 朋友向 (50) ============
+    { cat: 'friend', q: "聚餐時你通常是", a: "話多炒氣氛的", b: "聽別人講的" },
+    { cat: 'friend', q: "認識新朋友", a: "主動搭話", b: "等別人來" },
+    { cat: 'friend', q: "朋友臨時找你出門", a: "好啊立刻出發", b: "下次再約" },
+    { cat: 'friend', q: "比較討厭的朋友類型", a: "已讀不回的", b: "愛遲到的" },
+    { cat: 'friend', q: "群組裡通常是", a: "潛水派", b: "話多派" },
+    { cat: 'friend', q: "朋友推薦的東西", a: "馬上去試", b: "聽聽就好" },
+    { cat: 'friend', q: "壓力大的時候", a: "找人聊", b: "自己消化" },
+    { cat: 'friend', q: "朋友間記帳", a: "AA 制清清楚楚", b: "誰請誰沒差以後再說" },
+    { cat: 'friend', q: "朋友失戀找你", a: "陪他大哭一場", b: "理性分析給建議" },
+    { cat: 'friend', q: "朋友臨時取消約", a: "完全 OK", b: "有點不開心" },
+    { cat: 'friend', q: "好朋友的標準", a: "見面頻率高", b: "心靈距離近" },
+    { cat: 'friend', q: "朋友借錢", a: "二話不說借", b: "看金額和關係" },
+    { cat: 'friend', q: "朋友的另一半你不喜歡", a: "直接說", b: "默默觀察" },
+    { cat: 'friend', q: "比較喜歡的聚會", a: "大團體很熱鬧", b: "三五好友" },
+    { cat: 'friend', q: "朋友突然不聯絡", a: "主動關心", b: "尊重對方節奏" },
+    { cat: 'friend', q: "朋友炫耀新東西", a: "真心稱讚", b: "點頭微笑" },
+    { cat: 'friend', q: "好久不見的朋友", a: "覺得有距離", b: "馬上熱絡起來" },
+    { cat: 'friend', q: "朋友傳長語音訊息", a: "認真聽完", b: "請他打字" },
+    { cat: 'friend', q: "看到朋友吵架", a: "出來勸和", b: "保持中立" },
+    { cat: 'friend', q: "朋友請吃飯", a: "下次回請", b: "謝謝就好" },
+    { cat: 'friend', q: "朋友拍照拍到自己", a: "讓對方發", b: "希望先給我看" },
+    { cat: 'friend', q: "在朋友家過夜", a: "完全自在", b: "睡不好" },
+    { cat: 'friend', q: "聚會結束後", a: "意猶未盡想續攤", b: "想趕快回家充電" },
+    { cat: 'friend', q: "朋友的秘密", a: "守口如瓶", b: "看狀況講給很親的人" },
+    { cat: 'friend', q: "幫朋友撿便宜代購", a: "願意", b: "拒絕" },
+    { cat: 'friend', q: "朋友揪團", a: "幾乎都加入", b: "看內容決定" },
+    { cat: 'friend', q: "朋友離職", a: "為他開心", b: "捨不得" },
+    { cat: 'friend', q: "認識新朋友的方式", a: "透過共同朋友", b: "從興趣社團" },
+    { cat: 'friend', q: "傳訊息問朋友意見", a: "問完馬上需要回覆", b: "等對方有空" },
+    { cat: 'friend', q: "朋友吃飯前先拍照", a: "等他拍完", b: "我已經先吃了" },
+    { cat: 'friend', q: "朋友超會講冷笑話", a: "捧場大笑", b: "白眼一翻" },
+    { cat: 'friend', q: "看到朋友 IG 限動", a: "看完不一定回", b: "回應一下" },
+    { cat: 'friend', q: "朋友請你幫忙做事", a: "馬上答應", b: "看情況考慮" },
+    { cat: 'friend', q: "比較想要的朋友", a: "情緒穩定型", b: "歡樂搞笑型" },
+    { cat: 'friend', q: "聚會點餐", a: "我來決定", b: "別人決定就好" },
+    { cat: 'friend', q: "朋友吐槽你", a: "覺得很好笑", b: "心裡有點介意" },
+    { cat: 'friend', q: "朋友突然問你深層問題", a: "認真回答", b: "用玩笑話帶過" },
+    { cat: 'friend', q: "團體中你是", a: "點子王", b: "執行者" },
+    { cat: 'friend', q: "看朋友新照片", a: "用力按讚留言", b: "默默看完" },
+    { cat: 'friend', q: "朋友半夜傳訊息", a: "馬上回", b: "明天再說" },
+    { cat: 'friend', q: "朋友介紹相親/聯誼對象", a: "願意試試", b: "婉拒" },
+    { cat: 'friend', q: "看到朋友穿很怪", a: "直接吐槽", b: "不主動講" },
+    { cat: 'friend', q: "朋友的小孩", a: "很愛", b: "客氣保持距離" },
+    { cat: 'friend', q: "出去玩拍照", a: "想拍很多", b: "拍個一兩張就好" },
+    { cat: 'friend', q: "朋友醉了", a: "我來顧", b: "讓清醒的人顧" },
+    { cat: 'friend', q: "去 KTV", a: "搶麥唱到底", b: "點歌給別人唱" },
+    { cat: 'friend', q: "朋友推薦的店踩雷", a: "委婉說感想", b: "假裝沒事" },
+    { cat: 'friend', q: "聚會時手機", a: "幾乎不滑", b: "還是會偷看" },
+    { cat: 'friend', q: "朋友間的小禮物", a: "很重視儀式感", b: "心意到就好" },
+    { cat: 'friend', q: "認識多久才算朋友", a: "聊得來幾次就算", b: "要相處過挫折才算" },
+  
+    // ============ 深度問題 (110) ============
+    { cat: 'deep', q: "如果只能保留一個記憶", a: "最快樂的", b: "最深刻的" },
+    { cat: 'deep', q: "比較害怕", a: "被討厭", b: "被忽略" },
+    { cat: 'deep', q: "做決定時更重視", a: "理性分析", b: "直覺感受" },
+    { cat: 'deep', q: "比較難原諒", a: "說謊的人", b: "背叛的人" },
+    { cat: 'deep', q: "如果能回到過去", a: "改變一個決定", b: "什麼都不改" },
+    { cat: 'deep', q: "你覺得人生重要的是", a: "活得精彩", b: "活得安穩" },
+    { cat: 'deep', q: "比較想被別人說", a: "你好有趣", b: "你好可靠" },
+    { cat: 'deep', q: "面對未知比較想", a: "馬上探索", b: "先做好準備" },
+    { cat: 'deep', q: "後悔哪一種", a: "做了不該做的", b: "沒做想做的" },
+    { cat: 'deep', q: "如果能知道一件事", a: "自己的死期", b: "永遠不要知道" },
+    { cat: 'deep', q: "你覺得幸福是", a: "比別人好一點", b: "和自己比變好" },
+    { cat: 'deep', q: "比較怕的孤獨", a: "身邊沒人", b: "身邊有人卻無法理解" },
+    { cat: 'deep', q: "如果現在可以辭職一年", a: "去做想做的事", b: "其實不知道想做什麼" },
+    { cat: 'deep', q: "比較想要", a: "深刻而短暫的關係", b: "平淡而長久的關係" },
+    { cat: 'deep', q: "面對批評", a: "認真檢討", b: "先消化情緒再說" },
+    { cat: 'deep', q: "活著最重要的是", a: "被愛", b: "被理解" },
+    { cat: 'deep', q: "失敗了你會", a: "馬上再試", b: "先停下來想清楚" },
+    { cat: 'deep', q: "你相信", a: "命運", b: "選擇大於命運" },
+    { cat: 'deep', q: "最在意別人", a: "對我的評價", b: "對我做的事的評價" },
+    { cat: 'deep', q: "希望自己有的特質", a: "更勇敢", b: "更溫柔" },
+    { cat: 'deep', q: "面對死亡的態度", a: "怕，不想多想", b: "看開了" },
+    { cat: 'deep', q: "如果能跟過去的自己說一句話", a: "別擔心會好的", b: "趁早做某件事" },
+    { cat: 'deep', q: "比較羨慕", a: "有錢的人", b: "有時間的人" },
+    { cat: 'deep', q: "比較痛苦", a: "孤獨", b: "被困住" },
+    { cat: 'deep', q: "想要的是", a: "被看見", b: "默默被需要" },
+    { cat: 'deep', q: "面對問題", a: "正面迎擊", b: "繞過去再說" },
+    { cat: 'deep', q: "成功對你來說", a: "別人的肯定", b: "自己內心的平靜" },
+    { cat: 'deep', q: "讓你最有成就感的事", a: "完成困難的事", b: "幫助到別人" },
+    { cat: 'deep', q: "比較難過", a: "努力沒結果", b: "結果不是自己想要的" },
+    { cat: 'deep', q: "如果能改變一個個性", a: "別那麼在意別人", b: "別那麼苛責自己" },
+    { cat: 'deep', q: "最希望被", a: "崇拜", b: "依靠" },
+    { cat: 'deep', q: "面對改變", a: "擁抱它", b: "本能想抗拒" },
+    { cat: 'deep', q: "比較重要", a: "做自己愛的事", b: "做別人需要的事" },
+    { cat: 'deep', q: "最大的恐懼", a: "失去自由", b: "失去重要的人" },
+    { cat: 'deep', q: "怎樣才算長大", a: "能照顧好自己", b: "能照顧別人" },
+    { cat: 'deep', q: "你覺得時間是", a: "敵人", b: "朋友" },
+    { cat: 'deep', q: "如果能擁有", a: "完美的記憶力", b: "選擇性遺忘的能力" },
+    { cat: 'deep', q: "對你來說比較難受", a: "被誤解", b: "被遺忘" },
+    { cat: 'deep', q: "面對自己的弱點", a: "努力克服", b: "接受它共處" },
+    { cat: 'deep', q: "希望自己能", a: "影響很多人", b: "深深陪伴一個人" },
+    { cat: 'deep', q: "希望別人記得你是", a: "厲害的人", b: "溫暖的人" },
+    { cat: 'deep', q: "你心中的天堂", a: "和喜歡的人在一起", b: "做喜歡的事不被打擾" },
+    { cat: 'deep', q: "讓你撐下去的是", a: "未來的可能", b: "現在的責任" },
+    { cat: 'deep', q: "你比較相信", a: "人性本善", b: "人性看情況" },
+    { cat: 'deep', q: "理想的人生節奏", a: "充實忙碌", b: "從容緩慢" },
+    { cat: 'deep', q: "聽到讚美", a: "高興又有點懷疑", b: "坦然收下" },
+    { cat: 'deep', q: "最大的優點", a: "夠認真", b: "夠真實" },
+    { cat: 'deep', q: "感到迷惘時", a: "問別人意見", b: "自己一個人想" },
+    { cat: 'deep', q: "你覺得自由是", a: "想做什麼就做什麼", b: "不必勉強自己做什麼" },
+    { cat: 'deep', q: "活到一百歲", a: "好啊精彩", b: "不必，剛剛好就好" },
+
+    // 工作/職涯
+    { cat: 'deep', q: "對工作的期待", a: "穩定有保障", b: "一直挑戰新東西" },
+    { cat: 'deep', q: "選工作優先看", a: "薪水夠不夠", b: "做得開不開心" },
+    { cat: 'deep', q: "理想的職涯軌道", a: "在一個領域深耕到老", b: "中途轉行也沒關係" },
+    { cat: 'deep', q: "對成功的定義", a: "升到高位", b: "做出自己滿意的作品" },
+    { cat: 'deep', q: "覺得加班是", a: "可以接受的常態", b: "盡量避免" },
+    { cat: 'deep', q: "如果工作和興趣只能選一個當飯吃", a: "把興趣變工作", b: "工作歸工作、興趣歸興趣" },
+    { cat: 'deep', q: "工作上比較想要", a: "厲害的同事", b: "好相處的同事" },
+    { cat: 'deep', q: "如果有機會創業", a: "想試試看", b: "還是上班比較穩" },
+    { cat: 'deep', q: "上班最在意", a: "做的事有意義", b: "下班後的生活" },
+    { cat: 'deep', q: "對於跳槽", a: "兩三年動一次", b: "找到喜歡的就久待" },
+    { cat: 'deep', q: "工作壓力太大時", a: "硬撐過去", b: "趕快離開那個環境" },
+    { cat: 'deep', q: "選主管的話希望", a: "嚴格但會教你", b: "放手讓你自由發揮" },
+    { cat: 'deep', q: "比較想要的工作型態", a: "團隊合作熱鬧", b: "獨立作業自主" },
+    { cat: 'deep', q: "退休後想要的生活", a: "繼續做點什麼", b: "什麼都不做也很好" },
+    { cat: 'deep', q: "對待履歷上的空白期", a: "覺得需要解釋", b: "那段時間有它的意義" },
+
+    // 金錢觀
+    { cat: 'deep', q: "對金錢的態度", a: "存錢派，安全感重要", b: "享受當下，錢是拿來花的" },
+    { cat: 'deep', q: "拿到一筆獎金", a: "先存起來", b: "犒賞自己" },
+    { cat: 'deep', q: "如果月收入翻倍", a: "存款翻倍", b: "生活品質翻倍" },
+    { cat: 'deep', q: "比較值得花錢的", a: "體驗（旅行、課程）", b: "物品（買得到的東西）" },
+    { cat: 'deep', q: "看到喜歡的貴東西", a: "想很久再決定", b: "喜歡就買，省別的" },
+    { cat: 'deep', q: "對於借貸", a: "能不借就不借", b: "適當借錢沒問題" },
+    { cat: 'deep', q: "退休理財", a: "保守存款定存為主", b: "投資讓錢滾錢" },
+    { cat: 'deep', q: "對「窮」的看法", a: "比較沒安全感", b: "比較沒選擇" },
+    { cat: 'deep', q: "如果有 100 萬", a: "全部拿去投資", b: "全部留在身邊安心" },
+    { cat: 'deep', q: "對奢侈品的態度", a: "偶爾犒賞自己", b: "覺得沒必要" },
+    { cat: 'deep', q: "和朋友吃飯", a: "AA 制清楚", b: "輪流請比較有人情味" },
+    { cat: 'deep', q: "理想的退休金", a: "夠用就好", b: "越多越好越安心" },
+    { cat: 'deep', q: "比較會花錢在", a: "對自己好（吃喝玩樂）", b: "對未來好（投資進修）" },
+    { cat: 'deep', q: "看到便宜的東西", a: "馬上想搶", b: "想想用不用得到" },
+    { cat: 'deep', q: "如果只剩半年生命", a: "把錢花光", b: "留給重要的人" },
+
+    // 童年/原生家庭
+    { cat: 'deep', q: "回想童年比較多", a: "快樂的記憶", b: "想避開的記憶" },
+    { cat: 'deep', q: "童年時你比較像", a: "聽話的孩子", b: "有自己想法的孩子" },
+    { cat: 'deep', q: "家裡的氛圍小時候是", a: "熱鬧多話", b: "安靜各做各的" },
+    { cat: 'deep', q: "對父母的感覺", a: "親近能聊", b: "尊敬但有距離" },
+    { cat: 'deep', q: "比較像", a: "爸爸的個性", b: "媽媽的個性" },
+    { cat: 'deep', q: "從小被教導的是", a: "要努力上進", b: "要懂事體貼" },
+    { cat: 'deep', q: "童年最深的影響", a: "養成的習慣", b: "心裡的某個感受" },
+    { cat: 'deep', q: "和家人聊天頻率", a: "幾乎每天", b: "節日才聊" },
+    { cat: 'deep', q: "回家的感覺", a: "放鬆自在", b: "有點壓力" },
+    { cat: 'deep', q: "如果可以選童年重來", a: "希望重來一次", b: "不想重來" },
+    { cat: 'deep', q: "對父母的態度", a: "希望讓他們驕傲", b: "希望讓他們別擔心" },
+    { cat: 'deep', q: "從父母身上學到最多", a: "做事的方法", b: "做人的態度" },
+    { cat: 'deep', q: "原生家庭對你的影響", a: "讓我成為現在的自己", b: "有些部分想擺脫" },
+    { cat: 'deep', q: "對「家」的想像", a: "和原生家庭一樣", b: "完全不一樣" },
+    { cat: 'deep', q: "童年最想要的是", a: "更多陪伴", b: "更多自由" },
+
+    // 哲學思辨
+    { cat: 'deep', q: "電車難題：你會", a: "扳道讓 1 人死救 5 人", b: "什麼都不做" },
+    { cat: 'deep', q: "如果說謊能救人", a: "說謊", b: "說實話" },
+    { cat: 'deep', q: "比較相信", a: "結果決定一切", b: "過程比結果重要" },
+    { cat: 'deep', q: "做人比較重要的是", a: "對得起別人", b: "對得起自己" },
+    { cat: 'deep', q: "如果世界是場夢", a: "好好享受", b: "好想清醒" },
+    { cat: 'deep', q: "傳送機把你拆解後在另一邊重組，你會用嗎", a: "會，那還是我", b: "不會，那是複製人" },
+    { cat: 'deep', q: "對「自由意志」的看法", a: "我能真正選擇", b: "其實一切都是命定的" },
+    { cat: 'deep', q: "如果能永生", a: "好啊太棒了", b: "太可怕了" },
+    { cat: 'deep', q: "好人壞人的界線", a: "看行為", b: "看動機" },
+    { cat: 'deep', q: "如果可以讀別人的心", a: "想擁有", b: "不想知道" },
+    { cat: 'deep', q: "對「巧合」的看法", a: "純機率", b: "可能有意義" },
+    { cat: 'deep', q: "如果能無痛刪除一段壞記憶", a: "想刪", b: "壞記憶也是我的一部分" },
+    { cat: 'deep', q: "幫陌生人 vs 幫熟人", a: "兩個一樣重要", b: "當然熟人優先" },
+    { cat: 'deep', q: "對「死後世界」", a: "相信有", b: "覺得沒有" },
+    { cat: 'deep', q: "如果能讓一個人永遠快樂但失去自我", a: "讓他快樂", b: "保留他的自我" },
+
+    // ============ 無厘頭 (50) ============
+    { cat: 'funny', q: "比較想要的超能力", a: "會隱形", b: "會飛" },
+    { cat: 'funny', q: "如果中樂透 1000 萬", a: "馬上辭職", b: "繼續上班" },
+    { cat: 'funny', q: "比較怕的東西", a: "蟑螂", b: "蜘蛛" },
+    { cat: 'funny', q: "如果變成動物想當", a: "家裡的貓", b: "野外的鳥" },
+    { cat: 'funny', q: "末日來臨先做", a: "吃一頓大餐", b: "打電話給家人" },
+    { cat: 'funny', q: "比較想跟誰當朋友", a: "蜘蛛人", b: "鋼鐵人" },
+    { cat: 'funny', q: "穿越到古代想當", a: "皇帝", b: "隱士" },
+    { cat: 'funny', q: "如果世界只剩一首歌", a: "快歌", b: "慢歌" },
+    { cat: 'funny', q: "突然會講外星語", a: "去找外星人", b: "假裝沒事" },
+    { cat: 'funny', q: "如果可以選天氣", a: "永遠晴天", b: "永遠下雨天" },
+    { cat: 'funny', q: "撿到一盞神燈", a: "三個願望都用在自己", b: "至少留一個給別人" },
+    { cat: 'funny', q: "變透明一天會去", a: "偷聽八卦", b: "去博物館亂摸" },
+    { cat: 'funny', q: "如果只能吃一種食物", a: "拉麵", b: "炒飯" },
+    { cat: 'funny', q: "突然會講動物的話", a: "去跟貓聊天", b: "去跟魚聊天" },
+    { cat: 'funny', q: "在沙漠撿到一張床", a: "睡一下", b: "覺得很可疑" },
+    { cat: 'funny', q: "如果不用睡覺", a: "多出來的時間拿來玩", b: "多出來的時間拿來賺錢" },
+    { cat: 'funny', q: "可以選一個人代替你上班一天", a: "找朋友", b: "找個機器人" },
+    { cat: 'funny', q: "成為魔法師最想學的", a: "瞬間移動", b: "讓時間停下來" },
+    { cat: 'funny', q: "變超巨大能做的事", a: "踩房子", b: "去看雲" },
+    { cat: 'funny', q: "如果能變一種家具", a: "沙發", b: "床" },
+    { cat: 'funny', q: "突然失去重力 5 分鐘", a: "享受漂浮", b: "嚇到不敢動" },
+    { cat: 'funny', q: "如果只能用一個字溝通", a: "「啊」", b: "「嗯」" },
+    { cat: 'funny', q: "認真選一種末日", a: "殭屍末日", b: "AI 統治世界" },
+    { cat: 'funny', q: "變成水果想當", a: "西瓜", b: "草莓" },
+    { cat: 'funny', q: "可以跟一位歷史人物吃飯", a: "古代的", b: "近代的" },
+    { cat: 'funny', q: "在路上看到地上有 1000 元", a: "馬上撿", b: "看一下四周再撿" },
+    { cat: 'funny', q: "如果養一隻寵物恐龍", a: "暴龍", b: "迅猛龍" },
+    { cat: 'funny', q: "撿到一個會講話的鏡子", a: "每天問它", b: "塞到櫃子裡" },
+    { cat: 'funny', q: "如果只能說一句話一整天", a: "「謝謝」", b: "「沒事」" },
+    { cat: 'funny', q: "認真想想，比較想被甚麼追", a: "一群鴨子", b: "一隻火雞" },
+    { cat: 'funny', q: "可以選一個無用的技能", a: "舌頭碰到鼻子", b: "耳朵會動" },
+    { cat: 'funny', q: "變成一種樂器", a: "鋼琴", b: "吉他" },
+    { cat: 'funny', q: "如果能掌控別人的夢", a: "拿來惡作劇", b: "幫人做美夢" },
+    { cat: 'funny', q: "如果家裡突然多一個房間", a: "變遊戲室", b: "變超大衣帽間" },
+    { cat: 'funny', q: "養一隻會講話的鸚鵡", a: "教它罵人", b: "教它說情話" },
+    { cat: 'funny', q: "你比較想被當作", a: "天才", b: "怪人" },
+    { cat: 'funny', q: "如果突然會分身", a: "讓分身去上班", b: "讓分身做家事" },
+    { cat: 'funny', q: "想要哪種顏色的頭髮", a: "藍色", b: "粉紅色" },
+    { cat: 'funny', q: "變成一種飲料", a: "珍奶", b: "可樂" },
+    { cat: 'funny', q: "在無人島只能帶一樣", a: "打火機", b: "一本書" },
+    { cat: 'funny', q: "可以選一種童話結局", a: "灰姑娘", b: "睡美人" },
+    { cat: 'funny', q: "突然會煮飯", a: "開餐廳", b: "煮給自己吃就好" },
+    { cat: 'funny', q: "如果擁有一個機器人助理", a: "讓它做家事", b: "讓它陪我聊天" },
+    { cat: 'funny', q: "變成一棟建築", a: "燈塔", b: "圖書館" },
+    { cat: 'funny', q: "突然會通靈", a: "好奇想試", b: "立刻封印" },
+    { cat: 'funny', q: "想要一個任意門", a: "通到別的國家", b: "通到自己床上" },
+    { cat: 'funny', q: "如果能變一種昆蟲", a: "蝴蝶", b: "螢火蟲" },
+    { cat: 'funny', q: "把自己變成一道菜", a: "甜點", b: "鹹食" },
+    { cat: 'funny', q: "選一個地方住三個月", a: "森林小屋", b: "海邊小屋" },
+    { cat: 'funny', q: "比較想中的獎", a: "永遠的免費咖啡", b: "永遠的免費飲料" },
+  
+    // ============ 口味偏好 (50) ============
+    { cat: 'taste', q: "選一種口味", a: "辣", b: "酸" },
+    { cat: 'taste', q: "夜市必吃", a: "鹹酥雞", b: "珍珠奶茶" },
+    { cat: 'taste', q: "選一種寵物", a: "貓", b: "狗" },
+    { cat: 'taste', q: "比較想去", a: "海邊", b: "山上" },
+    { cat: 'taste', q: "比較會把錢花在", a: "吃的", b: "玩的" },
+    { cat: 'taste', q: "比較想學", a: "樂器", b: "外語" },
+    { cat: 'taste', q: "聽到歌會", a: "跟著哼", b: "安靜聽" },
+    { cat: 'taste', q: "禮物喜歡", a: "驚喜", b: "事先說好" },
+    { cat: 'taste', q: "吃飯速度", a: "很快", b: "很慢" },
+    { cat: 'taste', q: "比較討厭哪個", a: "下雨", b: "太熱" },
+    { cat: 'taste', q: "選一種季節", a: "春天", b: "秋天" },
+    { cat: 'taste', q: "拉麵選湯頭", a: "豚骨濃郁", b: "醬油清爽" },
+    { cat: 'taste', q: "喝咖啡", a: "黑咖啡", b: "加奶加糖" },
+    { cat: 'taste', q: "選一種米食", a: "白飯", b: "炒飯" },
+    { cat: 'taste', q: "麵 vs 飯", a: "麵", b: "飯" },
+    { cat: 'taste', q: "中式早餐", a: "豆漿油條", b: "蛋餅奶茶" },
+    { cat: 'taste', q: "甜點 vs 鹹食", a: "甜點", b: "鹹食" },
+    { cat: 'taste', q: "披薩配料", a: "夏威夷（鳳梨派）", b: "瑪格麗特（基本派）" },
+    { cat: 'taste', q: "牛排熟度", a: "三分", b: "七分以上" },
+    { cat: 'taste', q: "比較愛", a: "韓式", b: "日式" },
+    { cat: 'taste', q: "選一種飲料", a: "茶", b: "咖啡" },
+    { cat: 'taste', q: "選一種水果", a: "芒果", b: "草莓" },
+    { cat: 'taste', q: "選一種顏色", a: "黑白灰", b: "彩色繽紛" },
+    { cat: 'taste', q: "電影類型", a: "動作冒險", b: "劇情療癒" },
+    { cat: 'taste', q: "選音樂類型", a: "流行/抒情", b: "搖滾/獨立" },
+    { cat: 'taste', q: "出國想去", a: "歐洲", b: "亞洲" },
+    { cat: 'taste', q: "旅行方式", a: "事先排好行程", b: "走到哪算到哪" },
+    { cat: 'taste', q: "穿搭顏色", a: "深色系", b: "淺色系" },
+    { cat: 'taste', q: "選一種運動", a: "跑步/重訓", b: "瑜珈/伸展" },
+    { cat: 'taste', q: "聽 podcast", a: "知識類", b: "聊天類" },
+    { cat: 'taste', q: "看劇", a: "韓劇", b: "美劇" },
+    { cat: 'taste', q: "選一種味道", a: "蒜味", b: "蔥味" },
+    { cat: 'taste', q: "湯品", a: "酸辣湯", b: "玉米濃湯" },
+    { cat: 'taste', q: "宵夜", a: "鹹食", b: "甜食" },
+    { cat: 'taste', q: "吃火鍋湯底", a: "麻辣", b: "昆布/清湯" },
+    { cat: 'taste', q: "點手搖飲", a: "全糖正常冰", b: "微糖少冰" },
+    { cat: 'taste', q: "選一種堅果", a: "腰果", b: "杏仁" },
+    { cat: 'taste', q: "選一種起司", a: "濃郁味重", b: "清淡溫和" },
+    { cat: 'taste', q: "蛋的吃法", a: "全熟", b: "半熟流心" },
+    { cat: 'taste', q: "點心類", a: "巧克力", b: "餅乾" },
+    { cat: 'taste', q: "麵食", a: "湯麵", b: "乾麵" },
+    { cat: 'taste', q: "選一種裝飾風格", a: "極簡北歐", b: "復古溫暖" },
+    { cat: 'taste', q: "看書類型", a: "小說故事", b: "知識散文" },
+    { cat: 'taste', q: "看影片時長", a: "短影音", b: "長影片" },
+    { cat: 'taste', q: "週末早晨", a: "早起運動", b: "睡到自然醒" },
+    { cat: 'taste', q: "選一種花", a: "玫瑰", b: "向日葵" },
+    { cat: 'taste', q: "回家路上", a: "走熟悉的路", b: "偶爾繞不同條" },
+    { cat: 'taste', q: "選一種味覺體驗", a: "重口味", b: "清淡" },
+    { cat: 'taste', q: "聽歌時間", a: "通勤時", b: "睡前" },
+    { cat: 'taste', q: "選一種家飾", a: "植物盆栽", b: "畫作擺飾" }
+  ];
+
+  const DAILY_LIMIT = 3;
+
+  // ============ 狀態管理 ============
+  // ============ 房間機制 ============
+  let roomCode = null;
+  let unsubscribe = null;  // Firestore 訂閱取消函式
+
+  function loadRoom() {
+    try {
+      return localStorage.getItem('roomCode');
+    } catch { return null; }
+  }
+  function saveRoom(code) {
+    try { localStorage.setItem('roomCode', code); } catch {}
+    roomCode = code;
+  }
+  function clearRoom() {
+    try { localStorage.removeItem('roomCode'); } catch {}
+    roomCode = null;
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  }
+  let state = null;
+  let myRole = null; // 'A' or 'B'
+  let currentView = 'play'; // play | history | add | scores
+  let savedNamesCache = null;
+
+  // 從 localStorage 拿身分（跟房間綁定，不同房間身分獨立）
+  function loadRole() {
+    try {
+      if (!roomCode) return null;
+      return localStorage.getItem('role:' + roomCode);
+    } catch { return null; }
+  }
+  function saveRole(r) {
+    try {
+      if (roomCode) localStorage.setItem('role:' + roomCode, r);
+    } catch {}
+    myRole = r;
+  }
+  function clearRole() {
+    try {
+      if (roomCode) localStorage.removeItem('role:' + roomCode);
+    } catch {}
+    myRole = null;
+  }
+
+  // ============ 雲端資料 ============
+  // 結構：
+  // {
+  //   names: { A: "玩家A", B: "玩家B" },
+  //   customQuestions: [{ q, a, b, addedBy }],
+  //   usedIndices: [int],      // 已用過的題目 index（內建+自訂混合排序後）
+  //   currentRound: {
+  //     questionIdx: int,
+  //     question: {q, a, b},
+  //     A: { answer: 'a'|'b', guess: 'a'|'b' } | null,
+  //     B: { answer: 'a'|'b', guess: 'a'|'b' } | null,
+  //     revealed: boolean
+  //   } | null,
+  //   scores: { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} },
+  //   history: [ { question, A: {...}, B: {...}, date } ]
+  // }
+
+  async function loadState() {
+    if (!roomCode) return defaultState();
+    try {
+      const snap = await getDoc(doc(db, 'rooms', roomCode));
+      if (snap.exists()) {
+        return snap.data();
+      }
+    } catch (e) {
+      console.error('load failed', e);
+    }
+    return defaultState();
+  }
+
+  function defaultState() {
+    return {
+      names: { A: '玩家 A', B: '玩家 B' },
+      customQuestions: [],
+      usedIndices: [],
+      currentRound: null,
+      scores: { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} },
+      history: [],
+      dailyProgress: { date: '', count: 0 },
+      claimedRoles: { A: false, B: false }
+    };
+  }
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+  }
+
+  function ensureDailyProgress() {
+    if (!state.dailyProgress) state.dailyProgress = { date: '', count: 0 };
+    const today = todayKey();
+    if (state.dailyProgress.date !== today) {
+      state.dailyProgress = { date: today, count: 0 };
+    }
+  }
+
+  function remainingToday() {
+    ensureDailyProgress();
+    return Math.max(0, DAILY_LIMIT - state.dailyProgress.count);
+  }
+
+  async function saveState() {
+    if (!roomCode) return;
+    try {
+      await setDoc(doc(db, 'rooms', roomCode), state);
+    } catch (e) {
+      console.error('save failed', e);
+    }
+  }
+
+  // ============ 題目池 ============
+  function getAllQuestions() {
+    return [
+      ...BUILTIN_QUESTIONS.map(q => ({...q, source: 'builtin'})),
+      ...state.customQuestions.map(q => ({...q, source: 'custom'}))
+    ];
+  }
+
+  function pickNewQuestion() {
+    const all = getAllQuestions();
+    const available = all
+      .map((q, i) => ({q, i}))
+      .filter(x => !state.usedIndices.includes(x.i));
+
+    if (available.length === 0) {
+      // 全部答過了，重設
+      state.usedIndices = [];
+      return pickNewQuestion();
+    }
+
+    const pick = available[Math.floor(Math.random() * available.length)];
+    return { index: pick.i, question: pick.q };
+  }
+
+  async function startNewRound() {
+    const picked = pickNewQuestion();
+    state.currentRound = {
+      questionIdx: picked.index,
+      question: {
+        q: picked.question.q,
+        a: picked.question.a,
+        b: picked.question.b,
+        cat: picked.question.cat || 'daily'
+      },
+      A: null,
+      B: null,
+      revealed: false
+    };
+    state.usedIndices.push(picked.index);
+    await saveState();
+    render();
+  }
+
+  async function submitAnswer(answer, guess) {
+    if (!state.currentRound) return;
+    state.currentRound[myRole] = { answer, guess };
+
+    // 兩人都答完 → 由本機執行揭曉（如果對方早已寫好答案）
+    if (state.currentRound.A && state.currentRound.B && !state.currentRound.revealed) {
+      doReveal();
+    }
+
+    await saveState();
+    render();
+  }
+
+  // 揭曉 + 計分（只在 currentRound.revealed 還是 false 時才執行）
+  function doReveal() {
+    if (!state.currentRound || state.currentRound.revealed) return;
+    const A = state.currentRound.A;
+    const B = state.currentRound.B;
+    if (!A || !B) return;
+
+    state.currentRound.revealed = true;
+
+    if (A.guess === B.answer) state.scores.A.guess++;
+    if (B.guess === A.answer) state.scores.B.guess++;
+    if (A.answer === B.answer) {
+      state.scores.A.sync++;
+      state.scores.B.sync++;
+    }
+
+    state.history.unshift({
+      question: state.currentRound.question,
+      A: { ...A },
+      B: { ...B },
+      date: new Date().toISOString()
+    });
+    state.history = state.history.slice(0, 100);
+
+    ensureDailyProgress();
+    state.dailyProgress.count++;
+  }
+
+  // ============ 渲染 ============
+  function el(tag, attrs = {}, children = []) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') e.className = v;
+      else if (k === 'onclick') e.onclick = v;
+      else if (k === 'oninput') e.oninput = v;
+      else if (k === 'onchange') e.onchange = v;
+      else if (k === 'html') e.innerHTML = v;
+      else e.setAttribute(k, v);
+    }
+    if (typeof children === 'string') e.textContent = children;
+    else children.forEach(c => c && e.appendChild(c));
+    return e;
+  }
+
+  function render() {
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+
+    // 還沒選房間 → 顯示房間選擇畫面
+    if (!roomCode) {
+      app.appendChild(renderRoomPick());
+      return;
+    }
+
+    // 如果還沒選身分
+    if (!myRole) {
+      app.appendChild(renderWhoPick());
+      return;
+    }
+
+    app.appendChild(renderHeader());
+    app.appendChild(renderNav());
+
+    if (currentView === 'play') app.appendChild(renderPlay());
+    else if (currentView === 'scores') app.appendChild(renderScores());
+    else if (currentView === 'history') app.appendChild(renderHistory());
+    else if (currentView === 'add') app.appendChild(renderAdd());
+  }
+
+  function renderRoomPick() {
+    const wrap = el('div', { class: 'who-pick' });
+    wrap.appendChild(el('h2', {}, '默契猜猜'));
+    wrap.appendChild(el('p', {}, '輸入你們專屬的房間代碼'));
+
+    const input = el('input', {
+      class: 'input',
+      placeholder: '輸入代碼...',
+      style: 'font-size: 16px; padding: 14px; text-align: center; margin-top: 20px;'
+    });
+    wrap.appendChild(input);
+
+    const enterBtn = el('button', {
+      class: 'btn',
+      style: 'margin-top: 12px;',
+      onclick: async () => {
+        const code = input.value.trim().toLowerCase()
+          .replace(/[^a-z0-9_-]/g, '');  // 只留英數、底線、減號
+        if (!code) {
+          alert('請輸入房間代碼');
+          return;
+        }
+        if (code.length < 3) {
+          alert('代碼至少 3 個字');
+          return;
+        }
+        enterBtn.disabled = true;
+        enterBtn.textContent = '連線中...';
+        await connectRoom(code);
+      }
+    }, '進入房間');
+    wrap.appendChild(enterBtn);
+
+    const tip = el('div', { class: 'info-tip', style: 'margin-top: 30px; text-align: left;' });
+    tip.innerHTML = '💡 兩個人需要輸入<strong>同一個房間代碼</strong>才能一起玩。<br>第一個輸入的人會建立房間，之後對方輸入相同代碼就會進入同一個房間。<br><br>建議用只有你們兩個會想到的代碼（例如兩人名字組合），避免被陌生人猜到。';
+    wrap.appendChild(tip);
+
+    return wrap;
+  }
+
+  function renderWhoPick() {
+    const wrap = el('div', { class: 'who-pick' });
+    wrap.appendChild(el('h2', {}, '默契猜猜'));
+    wrap.appendChild(el('p', {}, '你是哪一位？'));
+
+    // 確保 claimedRoles 欄位存在（舊資料相容）
+    if (!state.claimedRoles) state.claimedRoles = { A: false, B: false };
+
+    const opts = el('div', { class: 'who-options' });
+
+    ['A', 'B'].forEach(role => {
+      const claimed = state.claimedRoles[role];
+      const btn = el('button', {
+        class: `who-option ${role.toLowerCase()}`,
+        style: claimed ? 'opacity: 0.35; cursor: not-allowed;' : '',
+        onclick: async () => {
+          if (claimed) return;
+          // 再次從雲端撈最新狀態，防止對方剛好同時搶
+          const fresh = await loadState();
+          if (!fresh.claimedRoles) fresh.claimedRoles = { A: false, B: false };
+          if (fresh.claimedRoles[role]) {
+            alert(`${state.names[role]} 已經被對方選走了，請選另一個`);
+            state = fresh;
+            render();
+            return;
+          }
+          // 搶到了 → 寫回雲端
+          state = fresh;
+          state.claimedRoles[role] = true;
+          await saveState();
+          saveRole(role);
+          render();
+        }
+      }, claimed ? `${state.names[role]}（已被對方選走）` : state.names[role]);
+      opts.appendChild(btn);
+    });
+
+    wrap.appendChild(opts);
+
+    const tip = el('div', { class: 'info-tip', style: 'margin-top: 30px; text-align: left;' });
+    tip.innerHTML = `💡 兩個人在房間「<strong>${escapeHtml(roomCode)}</strong>」裡，分別選玩家 A 和玩家 B。<br>第一次玩可以稍後在右上角點名字改成自己的暱稱。`;
+    wrap.appendChild(tip);
+
+    // 離開房間的小按鈕
+    const leave = el('button', {
+      class: 'swap-btn',
+      style: 'display: block; margin: 20px auto 0;',
+      onclick: () => {
+        if (confirm('離開這個房間？')) {
+          clearRoom();
+          render();
+        }
+      }
+    }, '離開房間');
+    wrap.appendChild(leave);
+
+    return wrap;
+  }
+
+  function renderHeader() {
+    const h = el('div', { class: 'header' });
+    h.appendChild(el('div', { class: 'title' }, '默契猜猜'));
+
+    const right = el('div', { style: 'display: flex; align-items: center; gap: 8px;' });
+    const badge = el('div', {
+      class: `who-badge who-${myRole.toLowerCase()}`
+    }, state.names[myRole]);
+    badge.style.cursor = 'pointer';
+    badge.onclick = async () => {
+      const newName = prompt('改個名字吧（例如你的暱稱）', state.names[myRole]);
+      if (newName && newName.trim()) {
+        state.names[myRole] = newName.trim().slice(0, 10);
+        await saveState();
+        render();
+      }
+    };
+    right.appendChild(badge);
+    h.appendChild(right);
+    return h;
+  }
+
+  function renderNav() {
+    const nav = el('div', { class: 'nav' });
+    const items = [
+      ['play', '今日'],
+      ['scores', '分數'],
+      ['history', '紀錄'],
+      ['add', '加題']
+    ];
+    items.forEach(([k, label]) => {
+      const b = el('button', {
+        class: currentView === k ? 'active' : '',
+        onclick: () => { currentView = k; render(); }
+      }, label);
+      nav.appendChild(b);
+    });
+    return nav;
+  }
+
+  function renderPlay() {
+    const wrap = el('div');
+
+    ensureDailyProgress();
+    const remaining = remainingToday();
+
+    // 沒有當前回合
+    if (!state.currentRound) {
+      // 今天額度用完
+      if (remaining === 0) {
+        const card = el('div', { class: 'card', style: 'text-align: center; padding: 40px 20px;' });
+        card.appendChild(el('div', { style: 'font-size: 36px; margin-bottom: 10px;' }, '🌙'));
+        card.appendChild(el('div', { style: 'font-size: 16px; font-weight: 600; margin-bottom: 6px;' }, '今天的 3 題都答完囉'));
+        card.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted);' }, '明天再來！'));
+        wrap.appendChild(card);
+
+        // 也顯示今天答了什麼
+        const todayHistory = state.history.filter(h => {
+          const d = new Date(h.date);
+          return todayKey() === `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+        });
+        if (todayHistory.length > 0) {
+          const sub = el('div', { class: 'card' });
+          sub.appendChild(el('div', { class: 'label' }, '今日回顧'));
+          todayHistory.forEach(item => {
+            const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+            const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+            row.innerHTML = `<span style="display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 6px; background: ${catInfo.bg}; color: ${catInfo.color}; margin-right: 6px; font-weight: 600;">${catInfo.name}</span><span>${escapeHtml(item.question.q)}</span>`;
+            sub.appendChild(row);
+          });
+          // 拿掉最後一條 border
+          if (sub.lastChild) sub.lastChild.style.borderBottom = 'none';
+          wrap.appendChild(sub);
+        }
+        return wrap;
+      }
+
+      const card = el('div', { class: 'card', style: 'text-align: center; padding: 40px 20px;' });
+      card.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted); margin-bottom: 4px;' },
+        `今天還有 ${remaining} 題`));
+      card.appendChild(el('div', { style: 'font-size: 14px; margin-bottom: 16px;' },
+        remaining === DAILY_LIMIT ? '開始今天的默契挑戰' : '繼續下一題'));
+      const btn = el('button', { class: 'btn', onclick: startNewRound }, '抽一題來玩');
+      card.appendChild(btn);
+      wrap.appendChild(card);
+      return wrap;
+    }
+
+    const round = state.currentRound;
+    const myData = round[myRole];
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    const otherData = round[otherRole];
+
+    // 已揭曉 → 顯示結果
+    if (round.revealed) {
+      wrap.appendChild(renderReveal(round));
+      // 額度檢查：揭曉後若已滿 3，按鈕變成提示
+      const remainAfter = remainingToday();
+      if (remainAfter === 0) {
+        const done = el('div', { class: 'card', style: 'text-align: center; padding: 20px;' });
+        done.appendChild(el('div', { style: 'font-size: 24px; margin-bottom: 6px;' }, '🌙'));
+        done.appendChild(el('div', { style: 'font-size: 14px; font-weight: 600;' }, '今天的 3 題完成！'));
+        done.appendChild(el('div', { style: 'font-size: 12px; color: var(--muted); margin-top: 4px;' }, '明天見～'));
+        const clearBtn = el('button', {
+          class: 'btn btn-ghost',
+          style: 'margin-top: 12px;',
+          onclick: async () => {
+            state.currentRound = null;
+            await saveState();
+            render();
+          }
+        }, '關閉');
+        done.appendChild(clearBtn);
+        wrap.appendChild(done);
+      } else {
+        const btn = el('button', { class: 'btn', onclick: async () => {
+          state.currentRound = null;
+          await saveState();
+          render();
+        }}, `下一題（還剩 ${remainAfter} 題）`);
+        wrap.appendChild(btn);
+      }
+      return wrap;
+    }
+
+    // 我已答完，等對方
+    if (myData) {
+      const card = el('div', { class: 'card waiting' });
+      card.appendChild(el('div', { class: 'waiting-icon' }, '⏳'));
+      card.appendChild(el('div', { class: 'waiting-text' }, `等 ${state.names[otherRole]} 作答…`));
+      card.appendChild(el('div', { class: 'waiting-sub' }, '對方答完會自動揭曉'));
+      wrap.appendChild(card);
+
+      const refresh = el('button', {
+        class: 'btn btn-ghost',
+        onclick: async () => {
+          state = await loadState();
+          render();
+        }
+      }, '手動重新整理');
+      wrap.appendChild(refresh);
+
+      // 顯示我的答案
+      const myCard = el('div', { class: 'card', style: 'margin-top: 14px;' });
+      myCard.appendChild(el('div', { class: 'label' }, '你的選擇'));
+      myCard.appendChild(el('div', { style: 'font-size: 14px; margin-bottom: 6px;' },
+        `我選：${myData.answer === 'a' ? round.question.a : round.question.b}`));
+      myCard.appendChild(el('div', { style: 'font-size: 14px; color: var(--muted);' },
+        `猜對方：${myData.guess === 'a' ? round.question.a : round.question.b}`));
+      wrap.appendChild(myCard);
+
+      return wrap;
+    }
+
+    // 還沒答 → 答題介面
+    wrap.appendChild(renderAnswerForm(round));
+    return wrap;
+  }
+
+  function renderAnswerForm(round) {
+    const wrap = el('div');
+
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    let myAnswer = null;
+    let myGuess = null;
+
+    // 題目卡
+    const qCard = el('div', { class: 'card' });
+    const catInfo = CATEGORIES[round.question.cat] || CATEGORIES.daily;
+    const catRow = el('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;' });
+    const catTag = el('span', {
+      style: `font-size: 11px; padding: 3px 10px; border-radius: 10px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600; letter-spacing: 0.5px;`
+    }, catInfo.name);
+    catRow.appendChild(catTag);
+    catRow.appendChild(el('span', {
+      style: 'font-size: 11px; color: var(--muted); letter-spacing: 0.8px;'
+    }, `第 ${state.dailyProgress.count + 1} / ${DAILY_LIMIT} 題`));
+    qCard.appendChild(catRow);
+    qCard.appendChild(el('div', { class: 'question' }, round.question.q));
+    wrap.appendChild(qCard);
+
+    // Step 1: 自己的答案
+    const step1 = el('div', { class: 'card' });
+    step1.appendChild(el('div', { class: 'label' }, `1. 你自己會選？`));
+
+    const opts1 = el('div', { class: 'options' });
+    ['a', 'b'].forEach(key => {
+      const btn = el('button', {
+        class: 'option',
+        onclick: () => {
+          myAnswer = key;
+          opts1.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          btn.classList.add('selected');
+          updateSubmit();
+        }
+      }, round.question[key]);
+      opts1.appendChild(btn);
+    });
+    step1.appendChild(opts1);
+    wrap.appendChild(step1);
+
+    // Step 2: 猜對方
+    const step2 = el('div', { class: 'card' });
+    step2.appendChild(el('div', { class: 'label' }, `2. 猜 ${state.names[otherRole]} 會選？`));
+
+    const opts2 = el('div', { class: 'options' });
+    ['a', 'b'].forEach(key => {
+      const btn = el('button', {
+        class: 'option',
+        onclick: () => {
+          myGuess = key;
+          opts2.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          btn.classList.add('selected');
+          updateSubmit();
+        }
+      }, round.question[key]);
+      opts2.appendChild(btn);
+    });
+    step2.appendChild(opts2);
+    wrap.appendChild(step2);
+
+    const submitBtn = el('button', {
+      class: 'btn',
+      disabled: 'true',
+      onclick: () => submitAnswer(myAnswer, myGuess)
+    }, '送出');
+    wrap.appendChild(submitBtn);
+
+    function updateSubmit() {
+      if (myAnswer && myGuess) {
+        submitBtn.removeAttribute('disabled');
+      }
+    }
+
+    return wrap;
+  }
+
+  function renderReveal(round) {
+    const wrap = el('div');
+
+    const A = round.A;
+    const B = round.B;
+    const isMatch = A.answer === B.answer;
+    const aGotIt = A.guess === B.answer;
+    const bGotIt = B.guess === A.answer;
+
+    // Banner
+    let bannerText = '';
+    let bannerClass = 'reveal-banner';
+    if (isMatch && aGotIt && bGotIt) {
+      bannerText = '🎉 滿分！心電感應 +默契爆棚';
+      bannerClass += ' match';
+    } else if (isMatch) {
+      bannerText = '💞 兩人選一樣！同步分 +1';
+      bannerClass += ' match';
+    } else if (aGotIt && bGotIt) {
+      bannerText = '🎯 互相猜對！默契分各 +1';
+      bannerClass += ' match';
+    } else if (aGotIt || bGotIt) {
+      bannerText = `🎯 ${aGotIt ? state.names.A : state.names.B} 猜對了！`;
+      bannerClass += ' match';
+    } else {
+      bannerText = '差一點點～再接再厲';
+    }
+
+    wrap.appendChild(el('div', { class: bannerClass }, bannerText));
+
+    // 題目
+    const qCard = el('div', { class: 'card' });
+    const catInfo = CATEGORIES[round.question.cat] || CATEGORIES.daily;
+    const catTag = el('span', {
+      style: `display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 10px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600; margin-bottom: 8px;`
+    }, catInfo.name);
+    qCard.appendChild(catTag);
+    qCard.appendChild(el('div', { class: 'question', style: 'margin-bottom: 16px;' }, round.question.q));
+
+    // 顯示每人答案
+    ['A', 'B'].forEach(role => {
+      const data = round[role];
+      const other = role === 'A' ? 'B' : 'A';
+      const otherData = round[other];
+
+      const row = el('div', { class: 'reveal-row' });
+      row.appendChild(el('div', { class: `reveal-who who-${role.toLowerCase()}`, style: `color: var(--accent-${role.toLowerCase()})` }, state.names[role]));
+
+      const detail = el('div', { style: 'font-size: 13px;' });
+      detail.innerHTML = `選了 <strong>${data.answer === 'a' ? round.question.a : round.question.b}</strong><br><span style="color: var(--muted);">猜對方：${data.guess === 'a' ? round.question.a : round.question.b}</span>`;
+      row.appendChild(detail);
+
+      const correct = data.guess === otherData.answer;
+      row.appendChild(el('div', {
+        class: 'reveal-mark ' + (correct ? 'correct' : 'wrong')
+      }, correct ? '✓' : '✗'));
+
+      qCard.appendChild(row);
+    });
+
+    wrap.appendChild(qCard);
+
+    // 即時分數
+    const scoreCard = el('div', { class: 'score-grid' });
+    ['A', 'B'].forEach(role => {
+      const box = el('div', { class: 'score-box' });
+      box.appendChild(el('div', { class: 'score-label' }, state.names[role]));
+      box.appendChild(el('div', { class: 'score-num', style: `color: var(--accent-${role.toLowerCase()})` },
+        `${state.scores[role].guess}`));
+      box.appendChild(el('div', { class: 'score-label', style: 'margin-top: 8px;' },
+        `默契 ${state.scores[role].guess} · 同步 ${state.scores[role].sync}`));
+      scoreCard.appendChild(box);
+    });
+    wrap.appendChild(scoreCard);
+
+    return wrap;
+  }
+
+  function renderScores() {
+    const wrap = el('div');
+
+    const tip = el('div', { class: 'info-tip' });
+    tip.innerHTML = '<strong>默契分</strong>：猜對方會選什麼，猜中 +1<br><strong>同步分</strong>：兩人選了同一個答案，各 +1';
+    wrap.appendChild(tip);
+
+    ['A', 'B'].forEach(role => {
+      const card = el('div', { class: 'card' });
+      card.appendChild(el('div', {
+        style: `font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--accent-${role.toLowerCase()})`
+      }, state.names[role]));
+
+      const grid = el('div', { class: 'score-grid', style: 'margin-bottom: 0;' });
+
+      const b1 = el('div', { class: 'score-box' });
+      b1.appendChild(el('div', { class: 'score-num' }, `${state.scores[role].guess}`));
+      b1.appendChild(el('div', { class: 'score-label' }, '默契分'));
+      grid.appendChild(b1);
+
+      const b2 = el('div', { class: 'score-box' });
+      b2.appendChild(el('div', { class: 'score-num' }, `${state.scores[role].sync}`));
+      b2.appendChild(el('div', { class: 'score-label' }, '同步分'));
+      grid.appendChild(b2);
+
+      card.appendChild(grid);
+      wrap.appendChild(card);
+    });
+
+    // 總共玩過幾題
+    const stats = el('div', { class: 'card', style: 'text-align: center;' });
+    stats.appendChild(el('div', { class: 'label' }, '累計戰績'));
+    stats.appendChild(el('div', { style: 'font-size: 28px; font-weight: 700; margin: 6px 0;' },
+      `${state.history.length} 題`));
+    stats.appendChild(el('div', { style: 'font-size: 12px; color: var(--muted);' },
+      `自訂題目 ${state.customQuestions.length} 題`));
+    wrap.appendChild(stats);
+
+    // Reset button
+    const resetBtn = el('button', {
+      class: 'btn btn-ghost',
+      onclick: async () => {
+        if (confirm('確定要重置所有分數嗎？歷史紀錄和題目會保留。')) {
+          state.scores = { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} };
+          await saveState();
+          render();
+        }
+      }
+    }, '重置分數');
+    wrap.appendChild(resetBtn);
+
+    const swap = el('button', {
+      class: 'swap-btn',
+      style: 'display: block; margin: 20px auto 0;',
+      onclick: async () => {
+        if (confirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
+          // 釋放目前身分
+          if (state.claimedRoles && myRole) {
+            state.claimedRoles[myRole] = false;
+            await saveState();
+          }
+          clearRole();
+          render();
+        }
+      }
+    }, '切換身分');
+    wrap.appendChild(swap);
+
+    // 房間資訊 + 離開房間
+    const roomInfo = el('div', {
+      style: 'text-align: center; margin-top: 20px; font-size: 11px; color: var(--muted);'
+    }, `目前房間：${roomCode}`);
+    wrap.appendChild(roomInfo);
+
+    const leave = el('button', {
+      class: 'swap-btn',
+      style: 'display: block; margin: 4px auto 0;',
+      onclick: async () => {
+        if (confirm('離開房間？資料還會留在雲端，下次輸入同樣代碼就能回來，身分也會自動沿用。')) {
+          // 注意：不釋放身分，讓本人下次進來自動沿用
+          // 房間代碼跟身分都記在本機，clearRoom 只清房間代碼，role 仍在 localStorage
+          clearRoom();
+          render();
+        }
+      }
+    }, '離開房間');
+    wrap.appendChild(leave);
+
+    return wrap;
+  }
+
+  function renderHistory() {
+    const wrap = el('div');
+
+    if (state.history.length === 0) {
+      wrap.appendChild(el('div', { class: 'empty' }, '還沒有任何紀錄'));
+      return wrap;
+    }
+
+    state.history.forEach(item => {
+      const card = el('div', { class: 'history-item' });
+
+      const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+      const topRow = el('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' });
+      const catTag = el('span', {
+        style: `font-size: 10px; padding: 2px 8px; border-radius: 8px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600;`
+      }, catInfo.name);
+      topRow.appendChild(catTag);
+      const date = new Date(item.date);
+      const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+      topRow.appendChild(el('span', { style: 'font-size: 11px; color: var(--muted);' }, dateStr));
+      card.appendChild(topRow);
+
+      card.appendChild(el('div', { class: 'history-q' }, item.question.q));
+
+      const detail = el('div', { class: 'history-detail' });
+      const isMatch = item.A.answer === item.B.answer;
+      const aGot = item.A.guess === item.B.answer;
+      const bGot = item.B.guess === item.A.answer;
+
+      detail.innerHTML = `
+        <div><strong style="color: var(--accent-a)">${state.names.A}</strong>：選${item.A.answer === 'a' ? item.question.a : item.question.b}　猜${item.A.guess === 'a' ? item.question.a : item.question.b} ${aGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
+        <div><strong style="color: var(--accent-b)">${state.names.B}</strong>：選${item.B.answer === 'a' ? item.question.a : item.question.b}　猜${item.B.guess === 'a' ? item.question.a : item.question.b} ${bGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
+        <div style="margin-top: 6px;">
+          ${aGot ? '<span class="pill pill-guess">A 默契+1</span>' : ''}
+          ${bGot ? '<span class="pill pill-guess">B 默契+1</span>' : ''}
+          ${isMatch ? '<span class="pill pill-sync">同步+1</span>' : ''}
+        </div>
+      `;
+      card.appendChild(detail);
+      wrap.appendChild(card);
+    });
+
+    return wrap;
+  }
+
+  function renderAdd() {
+    const wrap = el('div');
+
+    const tip = el('div', { class: 'info-tip' });
+    tip.innerHTML = '加進來的題目會混進題庫，未來抽題會抽到。建議出兩個各有支持者、不要太極端的選項，這樣猜起來才有意思 😋';
+    wrap.appendChild(tip);
+
+    const card = el('div', { class: 'card' });
+    card.appendChild(el('div', { class: 'label' }, '新題目'));
+
+    const qInput = el('input', { class: 'input', placeholder: '題目，例如：晚餐想吃什麼類型' });
+    const aInput = el('input', { class: 'input', placeholder: 'A 選項，例如：日式' });
+    const bInput = el('input', { class: 'input', placeholder: 'B 選項，例如：泰式' });
+
+    card.appendChild(qInput);
+    card.appendChild(aInput);
+    card.appendChild(bInput);
+
+    // 分類選擇
+    card.appendChild(el('div', { class: 'label', style: 'margin-top: 4px;' }, '分類'));
+    let selectedCat = 'daily';
+    const catGrid = el('div', { style: 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;' });
+    Object.entries(CATEGORIES).forEach(([key, info]) => {
+      const btn = el('button', {
+        style: `padding: 8px 4px; border-radius: 8px; border: 1.5px solid ${key === selectedCat ? info.color : 'var(--line)'}; background: ${key === selectedCat ? info.bg : 'var(--bg)'}; color: ${key === selectedCat ? info.color : 'var(--muted)'}; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;`,
+        onclick: () => {
+          selectedCat = key;
+          catGrid.querySelectorAll('button').forEach((b, i) => {
+            const k = Object.keys(CATEGORIES)[i];
+            const ci = CATEGORIES[k];
+            const isSel = k === selectedCat;
+            b.style.borderColor = isSel ? ci.color : 'var(--line)';
+            b.style.background = isSel ? ci.bg : 'var(--bg)';
+            b.style.color = isSel ? ci.color : 'var(--muted)';
+          });
+        }
+      }, info.name);
+      catGrid.appendChild(btn);
+    });
+    card.appendChild(catGrid);
+
+    const submitBtn = el('button', {
+      class: 'btn',
+      onclick: async () => {
+        const q = qInput.value.trim();
+        const a = aInput.value.trim();
+        const b = bInput.value.trim();
+        if (!q || !a || !b) {
+          alert('三個欄位都要填喔');
+          return;
+        }
+        state.customQuestions.push({ q, a, b, cat: selectedCat, addedBy: myRole });
+        await saveState();
+        qInput.value = '';
+        aInput.value = '';
+        bInput.value = '';
+        alert('加好了！');
+        render();
+      }
+    }, '加入題庫');
+    card.appendChild(submitBtn);
+    wrap.appendChild(card);
+
+    // 列出自訂題目
+    if (state.customQuestions.length > 0) {
+      const listCard = el('div', { class: 'card' });
+      listCard.appendChild(el('div', { class: 'label' }, `你們加的題目（${state.customQuestions.length}）`));
+      state.customQuestions.forEach((q, idx) => {
+        const item = el('div', {
+          style: 'padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: start; gap: 10px;'
+        });
+
+        const catInfo = CATEGORIES[q.cat] || CATEGORIES.daily;
+        const text = el('div', { style: 'flex: 1; font-size: 13px;' });
+        text.innerHTML = `<span style="display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 6px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600; margin-bottom: 4px;">${catInfo.name}</span><div style="font-weight: 600; margin-bottom: 3px;">${escapeHtml(q.q)}</div><div style="color: var(--muted);">${escapeHtml(q.a)} / ${escapeHtml(q.b)}</div>`;
+        item.appendChild(text);
+
+        const del = el('button', {
+          class: 'btn btn-ghost btn-small',
+          onclick: async () => {
+            if (confirm('刪掉這題？')) {
+              state.customQuestions.splice(idx, 1);
+              await saveState();
+              render();
+            }
+          }
+        }, '刪');
+        item.appendChild(del);
+
+        listCard.appendChild(item);
+      });
+      wrap.appendChild(listCard);
+    }
+
+    return wrap;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // ============ 啟動 ============
+  async function init() {
+    roomCode = loadRoom();
+    myRole = loadRole();
+
+    if (!roomCode) {
+      // 還沒選房間 → 顯示房間登入畫面
+      state = defaultState();
+      render();
+      return;
+    }
+
+    // 已有房間 → 訂閱 Firestore 即時更新
+    await connectRoom(roomCode);
+  }
+
+  async function connectRoom(code) {
+    roomCode = code;
+    saveRoom(code);
+
+    // 先初始載入一次
+    state = await loadState();
+
+    // 如果房間是空的（新建），寫入初始狀態
+    const snap = await getDoc(doc(db, 'rooms', code));
+    if (!snap.exists()) {
+      await saveState();
+    }
+
+    // 自動恢復身分：如果本機 localStorage 記錄了這個房間的舊身分，
+    // 而雲端也還掛著這個身分（claimedRoles[role] = true），就自動沿用
+    const savedRole = loadRole();
+    if (savedRole && state.claimedRoles && state.claimedRoles[savedRole]) {
+      myRole = savedRole;
+    } else if (savedRole && (!state.claimedRoles || !state.claimedRoles[savedRole])) {
+      // 雲端沒有這個 claim（可能是房間被重置），但本機還記得 → 自動補回
+      if (!state.claimedRoles) state.claimedRoles = { A: false, B: false };
+      state.claimedRoles[savedRole] = true;
+      myRole = savedRole;
+      await saveState();
+    }
+
+    // 即時訂閱：對方一寫資料就馬上同步到本機
+    if (unsubscribe) unsubscribe();
+    unsubscribe = onSnapshot(doc(db, 'rooms', code), (docSnap) => {
+      if (!docSnap.exists()) return;
+      const fresh = docSnap.data();
+
+      // 自動揭曉：本機沒有揭曉、雲端有兩人答案也沒揭曉 → 由本機觸發揭曉計分
+      // （任一台先觸發都會把 revealed=true 寫回，所以另一台收到時就直接同步）
+      if (state.currentRound && fresh.currentRound &&
+          fresh.currentRound.A && fresh.currentRound.B &&
+          !fresh.currentRound.revealed && !state.currentRound.revealed) {
+        state = fresh;
+        doReveal();
+        saveState();  // 寫回 revealed 狀態，對方會立刻收到
+        render();
+      } else {
+        state = fresh;
+        render();
+      }
+    });
+
+    render();
+  }
+
+  init();
+</script>
