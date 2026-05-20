@@ -935,9 +935,19 @@
 
   async function submitAnswer(answer, guess) {
     if (!state.currentRound) return;
-    state.currentRound[myRole] = { answer, guess };
 
-    // 兩人都答完 → 由本機執行揭曉（如果對方早已寫好答案）
+    // 重要：在寫入前先從雲端撈最新狀態，避免覆蓋對方剛寫入的答案
+    const fresh = await loadState();
+    if (!fresh.currentRound) {
+      // 雲端的回合資料消失了（罕見），回退到本地
+      state.currentRound[myRole] = { answer, guess };
+    } else {
+      // 用雲端版本當基底，只把自己的答案塞進去
+      state = fresh;
+      state.currentRound[myRole] = { answer, guess };
+    }
+
+    // 兩人都答完 → 由本機執行揭曉
     if (state.currentRound.A && state.currentRound.B && !state.currentRound.revealed) {
       doReveal();
     }
@@ -1070,32 +1080,50 @@
     // 確保 claimedRoles 欄位存在（舊資料相容）
     if (!state.claimedRoles) state.claimedRoles = { A: false, B: false };
 
+    // 判斷「救援模式」：兩個身分都被佔走 + 本機沒任何身分紀錄
+    // 表示這台手機之前是其中一方但本機紀錄掉了，讓使用者選回身分
+    const bothClaimed = state.claimedRoles.A && state.claimedRoles.B;
+    const noLocalRole = !loadRole();
+    const rescueMode = bothClaimed && noLocalRole;
+
+    if (rescueMode) {
+      const rescueNote = el('div', {
+        style: 'background: #fff5e6; border: 1px dashed #d4a84b; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; color: #8a6d1e; line-height: 1.6;'
+      });
+      rescueNote.innerHTML = '⚠️ 這台手機沒有身分紀錄，但房間已有兩個身分。<br>請選回你原本的身分（小心別跟對方搶到同一個）。';
+      wrap.appendChild(rescueNote);
+    }
+
     const opts = el('div', { class: 'who-options' });
 
     ['A', 'B'].forEach(role => {
       const claimed = state.claimedRoles[role];
+      const disabled = claimed && !rescueMode;  // 救援模式下兩個都可選
+
       const btn = el('button', {
         class: `who-option ${role.toLowerCase()}`,
-        style: claimed ? 'opacity: 0.35; cursor: not-allowed;' : '',
+        style: disabled ? 'opacity: 0.35; cursor: not-allowed;' : '',
         onclick: async () => {
-          if (claimed) return;
+          if (disabled) return;
           // 再次從雲端撈最新狀態，防止對方剛好同時搶
           const fresh = await loadState();
           if (!fresh.claimedRoles) fresh.claimedRoles = { A: false, B: false };
-          if (fresh.claimedRoles[role]) {
+
+          // 救援模式下允許「重新領回」自己原本的身分
+          if (!rescueMode && fresh.claimedRoles[role]) {
             alert(`${state.names[role]} 已經被對方選走了，請選另一個`);
             state = fresh;
             render();
             return;
           }
-          // 搶到了 → 寫回雲端
+
           state = fresh;
           state.claimedRoles[role] = true;
           await saveState();
           saveRole(role);
           render();
         }
-      }, claimed ? `${state.names[role]}（已被對方選走）` : state.names[role]);
+      }, disabled ? `${state.names[role]}（已被對方選走）` : state.names[role]);
       opts.appendChild(btn);
     });
 
@@ -1770,8 +1798,18 @@
       if (!docSnap.exists()) return;
       const fresh = docSnap.data();
 
+      // 防呆：如果本機已經把自己的答案寫進 currentRound、但雲端版本卻沒有
+      // （表示對方剛寫了一筆但雲端是他寫之前的快照、沒包含我），這種情況極罕見，
+      // 但我們不應該讓本機的答案被「不完整的雲端版本」蓋掉。
+      // 解法：如果本機 currentRound[myRole] 有值、雲端的同回合沒有，就保留本機的答案。
+      if (state.currentRound && fresh.currentRound &&
+          state.currentRound.questionIdx === fresh.currentRound.questionIdx) {
+        if (state.currentRound[myRole] && !fresh.currentRound[myRole]) {
+          fresh.currentRound[myRole] = state.currentRound[myRole];
+        }
+      }
+
       // 自動揭曉：本機沒有揭曉、雲端有兩人答案也沒揭曉 → 由本機觸發揭曉計分
-      // （任一台先觸發都會把 revealed=true 寫回，所以另一台收到時就直接同步）
       if (state.currentRound && fresh.currentRound &&
           fresh.currentRound.A && fresh.currentRound.B &&
           !fresh.currentRound.revealed && !state.currentRound.revealed) {
