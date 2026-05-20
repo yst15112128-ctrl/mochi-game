@@ -797,6 +797,12 @@
   }
   let state = null;
   let myRole = null; // 'A' or 'B'
+  let countdownInterval = null;  // 倒數計時器
+  let myRoundStartedQ = null;    // 我看到的是哪一題 (questionIdx)，避免重複觸發超時
+  let myRoundStartTime = null;   // 我看到這題的本機時間戳 (Date.now())，計算倒數用
+  let pendingAnswer = null;      // 答題畫面暫存：'a' | 'b'
+  let pendingGuess = null;       // 答題畫面暫存：'a' | 'b'
+  const ROUND_TIME_LIMIT = 20;   // 秒
   let currentView = 'play'; // play | history | add | scores
   let savedNamesCache = null;
 
@@ -853,6 +859,7 @@
   function defaultState() {
     return {
       names: { A: '玩家 A', B: '玩家 B' },
+      avatars: { A: '🐱', B: '🐶' },
       customQuestions: [],
       usedIndices: [],
       currentRound: null,
@@ -866,6 +873,12 @@
   function todayKey() {
     const d = new Date();
     return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+  }
+
+  // 取得玩家頭像（兼容舊資料）
+  function getAvatar(role) {
+    if (state.avatars && state.avatars[role]) return state.avatars[role];
+    return role === 'A' ? '🐱' : '🐶';
   }
 
   function ensureDailyProgress() {
@@ -926,7 +939,10 @@
       },
       A: null,
       B: null,
-      revealed: false
+      revealed: false,
+      startedAt: Date.now(),
+      timedOut: false,
+      ackedBy: { A: false, B: false }
     };
     state.usedIndices.push(picked.index);
     await saveState();
@@ -935,6 +951,11 @@
 
   async function submitAnswer(answer, guess) {
     if (!state.currentRound) return;
+
+    // 答完了 → 停止倒數、清掉自己這題的時間紀錄
+    stopCountdown();
+    myRoundStartedQ = null;
+    myRoundStartTime = null;
 
     // 重要：在寫入前先從雲端撈最新狀態，避免覆蓋對方剛寫入的答案
     const fresh = await loadState();
@@ -982,6 +1003,31 @@
 
     ensureDailyProgress();
     state.dailyProgress.count++;
+  }
+
+  // 揭曉後使用者按「下一題」：標記自己看完、兩人都看完才清掉 currentRound
+  async function ackAndAdvance() {
+    // 先撈雲端最新狀態
+    const fresh = await loadState();
+    if (!fresh.currentRound || !fresh.currentRound.revealed) {
+      // 雲端狀態異常，回退處理
+      state = fresh;
+      render();
+      return;
+    }
+
+    state = fresh;
+    if (!state.currentRound.ackedBy) state.currentRound.ackedBy = { A: false, B: false };
+    state.currentRound.ackedBy[myRole] = true;
+
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    if (state.currentRound.ackedBy[otherRole]) {
+      // 雙方都看過了 → 清掉這題
+      state.currentRound = null;
+    }
+
+    await saveState();
+    render();
   }
 
   // ============ 渲染 ============
@@ -1111,7 +1157,7 @@
 
           // 救援模式下允許「重新領回」自己原本的身分
           if (!rescueMode && fresh.claimedRoles[role]) {
-            alert(`${state.names[role]} 已經被對方選走了，請選另一個`);
+            alert(`${getAvatar(role)} ${state.names[role]} 已經被對方選走了，請選另一個`);
             state = fresh;
             render();
             return;
@@ -1123,7 +1169,7 @@
           saveRole(role);
           render();
         }
-      }, disabled ? `${state.names[role]}（已被對方選走）` : state.names[role]);
+      }, disabled ? `${getAvatar(role)} ${state.names[role]}（已被對方選走）` : `${getAvatar(role)} ${state.names[role]}`);
       opts.appendChild(btn);
     });
 
@@ -1164,8 +1210,11 @@
     const right = el('div', { style: 'display: flex; align-items: center; gap: 8px;' });
 
     const badge = el('div', {
-      class: `who-badge who-${myRole.toLowerCase()}`
-    }, state.names[myRole]);
+      class: `who-badge who-${myRole.toLowerCase()}`,
+      style: 'display: flex; align-items: center; gap: 4px;'
+    });
+    badge.appendChild(el('span', { style: 'font-size: 14px;' }, getAvatar(myRole)));
+    badge.appendChild(el('span', {}, state.names[myRole]));
     badge.style.cursor = 'pointer';
     badge.onclick = async () => {
       const newName = prompt('改個名字吧（例如你的暱稱）', state.names[myRole]);
@@ -1223,6 +1272,10 @@
       }
     }));
 
+    menu.appendChild(makeItem('改頭像', () => {
+      showEmojiPicker();
+    }));
+
     menu.appendChild(makeItem('切換身分', async () => {
       if (confirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
         if (state.claimedRoles && myRole) {
@@ -1253,6 +1306,111 @@
       };
       document.addEventListener('click', closeHandler);
     }, 0);
+  }
+
+  // Emoji 頭像選擇器（模態視窗）
+  function showEmojiPicker() {
+    // 移除舊的
+    const existing = document.getElementById('emoji-modal');
+    if (existing) existing.remove();
+
+    const emojis = [
+      '🍑', '🍓', '🍋', '🍒', '🍇', '🍉',
+      '🌿', '🌸', '🌷', '🌻', '🌙', '⭐',
+      '🐱', '🐶', '🦊', '🐻', '🐰', '🐼',
+      '🐨', '🐹', '🐸', '🐧', '🦄', '🐝',
+      '☕', '🧋', '🍵', '🍪', '🍩', '🍰'
+    ];
+
+    const overlay = el('div', {
+      id: 'emoji-modal',
+      style: 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;',
+      onclick: function(e) {
+        if (e.target === this) this.remove();
+      }
+    });
+
+    const modal = el('div', {
+      style: 'background: white; border-radius: 18px; padding: 20px; max-width: 360px; width: 100%; max-height: 80vh; overflow-y: auto;',
+      onclick: (e) => e.stopPropagation()
+    });
+
+    const title = el('div', {
+      style: 'font-size: 16px; font-weight: 700; margin-bottom: 4px;'
+    }, '挑一個頭像');
+    modal.appendChild(title);
+
+    const sub = el('div', {
+      style: 'font-size: 12px; color: var(--muted); margin-bottom: 16px;'
+    }, '選一個 emoji 代表你');
+    modal.appendChild(sub);
+
+    let chosen = getAvatar(myRole);
+
+    const grid = el('div', {
+      style: 'display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px;'
+    });
+
+    function renderTiles() {
+      grid.innerHTML = '';
+      emojis.forEach(emoji => {
+        const tile = el('div', {
+          style: `aspect-ratio: 1; border: 2px solid ${emoji === chosen ? 'var(--accent-a)' : 'var(--line)'}; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; background: ${emoji === chosen ? 'var(--soft-a)' : 'white'};`,
+          onclick: () => {
+            chosen = emoji;
+            customInput.value = '';
+            renderTiles();
+          }
+        }, emoji);
+        grid.appendChild(tile);
+      });
+    }
+    renderTiles();
+    modal.appendChild(grid);
+
+    const customLabel = el('div', {
+      style: 'font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px;'
+    }, '或自訂（貼上任意 emoji）');
+    modal.appendChild(customLabel);
+
+    const customInput = el('input', {
+      class: 'input',
+      style: 'width: 100%; text-align: center; font-size: 22px; padding: 10px; margin-bottom: 16px;',
+      placeholder: '✨',
+      maxlength: '20',
+      oninput: function() {
+        const v = this.value.trim();
+        if (v) {
+          chosen = v;
+          renderTiles();
+        }
+      }
+    });
+    modal.appendChild(customInput);
+
+    const btnRow = el('div', { style: 'display: flex; gap: 8px;' });
+    const cancelBtn = el('button', {
+      class: 'btn btn-ghost',
+      style: 'flex: 1; margin: 0;',
+      onclick: () => overlay.remove()
+    }, '取消');
+    const saveBtn = el('button', {
+      class: 'btn',
+      style: 'flex: 1; margin: 0;',
+      onclick: async () => {
+        if (!state.avatars) state.avatars = { A: '🐱', B: '🐶' };
+        state.avatars[myRole] = chosen;
+        await saveState();
+        overlay.remove();
+        render();
+      }
+    }, '儲存');
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(saveBtn);
+    modal.appendChild(btnRow);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
   }
 
   function renderNav() {
@@ -1326,11 +1484,77 @@
     const otherRole = myRole === 'A' ? 'B' : 'A';
     const otherData = round[otherRole];
 
+    // 超時 → 雙方都顯示通知並等對方按了解
+    if (round.timedOut) {
+      stopCountdown();
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      if (!round.timeoutAckedBy) round.timeoutAckedBy = { A: false, B: false };
+      const iAcked = round.timeoutAckedBy[myRole];
+      const otherAcked = round.timeoutAckedBy[otherRole];
+
+      const timeoutCard = el('div', { class: 'card', style: 'text-align: center; padding: 30px 20px;' });
+      timeoutCard.appendChild(el('div', { style: 'font-size: 36px; margin-bottom: 10px;' }, '⏱️'));
+
+      const whoTimedOut = round.timedOutBy;
+      const isMe = whoTimedOut === myRole;
+      timeoutCard.appendChild(el('div', { style: 'font-size: 15px; font-weight: 600; margin-bottom: 6px;' },
+        isMe ? '時間到了！' : `${getAvatar(whoTimedOut)} ${state.names[whoTimedOut]} 超時了`));
+      timeoutCard.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted); margin-bottom: 16px;' },
+        '這題作廢，不算今日進度'));
+
+      if (iAcked && !otherAcked) {
+        timeoutCard.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted);' },
+          `等 ${getAvatar(otherRole)} ${state.names[otherRole]} 看完…`));
+      } else {
+        const btn = el('button', {
+          class: 'btn',
+          onclick: async () => {
+            const fresh = await loadState();
+            if (!fresh.currentRound) {
+              state = fresh;
+              render();
+              return;
+            }
+            if (!fresh.currentRound.timeoutAckedBy) fresh.currentRound.timeoutAckedBy = { A: false, B: false };
+            fresh.currentRound.timeoutAckedBy[myRole] = true;
+            // 兩人都看過 → 清掉這回合
+            if (fresh.currentRound.timeoutAckedBy[otherRole]) {
+              fresh.currentRound = null;
+            }
+            state = fresh;
+            await saveState();
+            render();
+          }
+        }, '了解');
+        timeoutCard.appendChild(btn);
+      }
+      wrap.appendChild(timeoutCard);
+      return wrap;
+    }
+
     // 已揭曉 → 顯示結果
     if (round.revealed) {
+      stopCountdown();
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
       wrap.appendChild(renderReveal(round));
+
+      // 確保 ackedBy 存在
+      if (!round.ackedBy) round.ackedBy = { A: false, B: false };
+      const iAcked = round.ackedBy[myRole];
+      const otherAcked = round.ackedBy[otherRole];
+
       // 額度檢查：揭曉後若已滿 3，按鈕變成提示
       const remainAfter = remainingToday();
+
+      if (iAcked && !otherAcked) {
+        // 我已經按過下一題，但對方還沒 → 等對方
+        const wait = el('div', { class: 'card', style: 'text-align: center; padding: 20px;' });
+        wait.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted);' },
+          `等 ${getAvatar(otherRole)} ${state.names[otherRole]} 看完揭曉…`));
+        wrap.appendChild(wait);
+        return wrap;
+      }
+
       if (remainAfter === 0) {
         const done = el('div', { class: 'card', style: 'text-align: center; padding: 20px;' });
         done.appendChild(el('div', { style: 'font-size: 24px; margin-bottom: 6px;' }, '🌙'));
@@ -1340,18 +1564,14 @@
           class: 'btn btn-ghost',
           style: 'margin-top: 12px;',
           onclick: async () => {
-            state.currentRound = null;
-            await saveState();
-            render();
+            await ackAndAdvance();
           }
         }, '關閉');
         done.appendChild(clearBtn);
         wrap.appendChild(done);
       } else {
         const btn = el('button', { class: 'btn', onclick: async () => {
-          state.currentRound = null;
-          await saveState();
-          render();
+          await ackAndAdvance();
         }}, `下一題（還剩 ${remainAfter} 題）`);
         wrap.appendChild(btn);
       }
@@ -1360,9 +1580,10 @@
 
     // 我已答完，等對方
     if (myData) {
+      stopCountdown();
       const card = el('div', { class: 'card waiting' });
       card.appendChild(el('div', { class: 'waiting-icon' }, '⏳'));
-      card.appendChild(el('div', { class: 'waiting-text' }, `等 ${state.names[otherRole]} 作答…`));
+      card.appendChild(el('div', { class: 'waiting-text' }, `等 ${getAvatar(otherRole)} ${state.names[otherRole]} 作答…`));
       card.appendChild(el('div', { class: 'waiting-sub' }, '對方答完會自動揭曉'));
       wrap.appendChild(card);
 
@@ -1396,8 +1617,36 @@
     const wrap = el('div');
 
     const otherRole = myRole === 'A' ? 'B' : 'A';
-    let myAnswer = null;
-    let myGuess = null;
+
+    // 如果換到新題目，清掉暫存
+    if (myRoundStartedQ !== round.questionIdx) {
+      pendingAnswer = null;
+      pendingGuess = null;
+      myRoundStartTime = null;  // 讓下面 startCountdown 用新的開始時間
+    }
+
+    // 倒數條容器（放在最上面）
+    const timerWrap = el('div', {
+      style: 'margin-bottom: 14px;'
+    });
+    const timerLabel = el('div', {
+      style: 'display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px;'
+    });
+    const timerText = el('span', {}, `⏱️ 剩餘時間`);
+    const timerCount = el('span', { style: 'font-weight: 700; color: var(--ink);' }, `${ROUND_TIME_LIMIT}s`);
+    timerLabel.appendChild(timerText);
+    timerLabel.appendChild(timerCount);
+    timerWrap.appendChild(timerLabel);
+
+    const timerBar = el('div', {
+      style: 'height: 6px; background: var(--line); border-radius: 3px; overflow: hidden;'
+    });
+    const timerFill = el('div', {
+      style: 'height: 100%; width: 100%; background: var(--green); border-radius: 3px; transition: width 0.95s linear, background-color 0.3s;'
+    });
+    timerBar.appendChild(timerFill);
+    timerWrap.appendChild(timerBar);
+    wrap.appendChild(timerWrap);
 
     // 題目卡
     const qCard = el('div', { class: 'card' });
@@ -1421,9 +1670,9 @@
     const opts1 = el('div', { class: 'options' });
     ['a', 'b'].forEach(key => {
       const btn = el('button', {
-        class: 'option',
+        class: 'option' + (pendingAnswer === key ? ' selected' : ''),
         onclick: () => {
-          myAnswer = key;
+          pendingAnswer = key;
           opts1.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
           btn.classList.add('selected');
           updateSubmit();
@@ -1436,14 +1685,14 @@
 
     // Step 2: 猜對方
     const step2 = el('div', { class: 'card' });
-    step2.appendChild(el('div', { class: 'label' }, `2. 猜 ${state.names[otherRole]} 會選？`));
+    step2.appendChild(el('div', { class: 'label' }, `2. 猜 ${getAvatar(otherRole)} ${state.names[otherRole]} 會選？`));
 
     const opts2 = el('div', { class: 'options' });
     ['a', 'b'].forEach(key => {
       const btn = el('button', {
-        class: 'option',
+        class: 'option' + (pendingGuess === key ? ' selected' : ''),
         onclick: () => {
-          myGuess = key;
+          pendingGuess = key;
           opts2.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
           btn.classList.add('selected');
           updateSubmit();
@@ -1456,18 +1705,103 @@
 
     const submitBtn = el('button', {
       class: 'btn',
-      disabled: 'true',
-      onclick: () => submitAnswer(myAnswer, myGuess)
+      onclick: () => {
+        if (!pendingAnswer || !pendingGuess) return;
+        stopCountdown();
+        const a = pendingAnswer, g = pendingGuess;
+        pendingAnswer = null;
+        pendingGuess = null;
+        submitAnswer(a, g);
+      }
     }, '送出');
+    if (!pendingAnswer || !pendingGuess) {
+      submitBtn.setAttribute('disabled', 'true');
+    }
     wrap.appendChild(submitBtn);
 
     function updateSubmit() {
-      if (myAnswer && myGuess) {
+      if (pendingAnswer && pendingGuess) {
         submitBtn.removeAttribute('disabled');
+      } else {
+        submitBtn.setAttribute('disabled', 'true');
       }
     }
 
+    // 啟動倒數（用真實時間扣，不會被 re-render 重置）
+    if (myRoundStartedQ !== round.questionIdx) {
+      myRoundStartedQ = round.questionIdx;
+      myRoundStartTime = Date.now();
+    }
+    startCountdown(timerFill, timerCount);
+
     return wrap;
+  }
+
+  function stopCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
+  function startCountdown(fillEl, textEl) {
+    stopCountdown();
+    if (!myRoundStartTime) myRoundStartTime = Date.now();
+
+    function tick() {
+      const elapsed = (Date.now() - myRoundStartTime) / 1000;
+      const seconds = Math.max(0, Math.ceil(ROUND_TIME_LIMIT - elapsed));
+      const pct = (seconds / ROUND_TIME_LIMIT) * 100;
+      fillEl.style.width = pct + '%';
+      if (seconds > 10) {
+        fillEl.style.background = 'var(--green)';
+      } else if (seconds > 5) {
+        fillEl.style.background = 'var(--gold)';
+      } else {
+        fillEl.style.background = '#c54545';
+      }
+      textEl.textContent = `${seconds}s`;
+      textEl.style.color = seconds <= 5 ? '#c54545' : 'var(--ink)';
+
+      if (elapsed >= ROUND_TIME_LIMIT) {
+        stopCountdown();
+        handleTimeout();
+      }
+    }
+
+    tick();  // 立即更新一次以反映已過時間
+    countdownInterval = setInterval(tick, 250);  // 250ms 更新一次比較流暢
+  }
+
+  async function handleTimeout() {
+    // 標記這題已超時，由本機觸發作廢；由雙方各自按「了解」後清掉
+    if (!state.currentRound) return;
+    const fresh = await loadState();
+    if (!fresh.currentRound || fresh.currentRound.questionIdx !== myRoundStartedQ) {
+      // 雲端已換題或被作廢，不處理
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      return;
+    }
+    if (fresh.currentRound.revealed) {
+      // 已揭曉就不算超時
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      return;
+    }
+    if (fresh.currentRound.timedOut) {
+      // 對方已先超時（或已標記），不重複觸發
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      state = fresh;
+      render();
+      return;
+    }
+    fresh.currentRound.timedOut = true;
+    fresh.currentRound.timedOutBy = myRole;
+    fresh.currentRound.timeoutAckedBy = { A: false, B: false };
+    state = fresh;
+    myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+    await saveState();
+    // 不再彈 alert，讓畫面切到「超時」狀態（雙方都看得到）
+    render();
   }
 
   function renderReveal(round) {
@@ -1492,7 +1826,8 @@
       bannerText = '🎯 互相猜對！默契分各 +1';
       bannerClass += ' match';
     } else if (aGotIt || bGotIt) {
-      bannerText = `🎯 ${aGotIt ? state.names.A : state.names.B} 猜對了！`;
+      const who = aGotIt ? 'A' : 'B';
+      bannerText = `🎯 ${getAvatar(who)} ${state.names[who]} 猜對了！`;
       bannerClass += ' match';
     } else {
       bannerText = '差一點點～再接再厲';
@@ -1516,7 +1851,7 @@
       const otherData = round[other];
 
       const row = el('div', { class: 'reveal-row' });
-      row.appendChild(el('div', { class: `reveal-who who-${role.toLowerCase()}`, style: `color: var(--accent-${role.toLowerCase()})` }, state.names[role]));
+      row.appendChild(el('div', { class: `reveal-who who-${role.toLowerCase()}`, style: `color: var(--accent-${role.toLowerCase()})` }, `${getAvatar(role)} ${state.names[role]}`));
 
       const detail = el('div', { style: 'font-size: 13px;' });
       detail.innerHTML = `選了 <strong>${data.answer === 'a' ? round.question.a : round.question.b}</strong><br><span style="color: var(--muted);">猜對方：${data.guess === 'a' ? round.question.a : round.question.b}</span>`;
@@ -1536,7 +1871,7 @@
     const scoreCard = el('div', { class: 'score-grid' });
     ['A', 'B'].forEach(role => {
       const box = el('div', { class: 'score-box' });
-      box.appendChild(el('div', { class: 'score-label' }, state.names[role]));
+      box.appendChild(el('div', { class: 'score-label' }, `${getAvatar(role)} ${state.names[role]}`));
       box.appendChild(el('div', { class: 'score-num', style: `color: var(--accent-${role.toLowerCase()})` },
         `${state.scores[role].guess}`));
       box.appendChild(el('div', { class: 'score-label', style: 'margin-top: 8px;' },
@@ -1559,7 +1894,7 @@
       const card = el('div', { class: 'card' });
       card.appendChild(el('div', {
         style: `font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--accent-${role.toLowerCase()})`
-      }, state.names[role]));
+      }, `${getAvatar(role)} ${state.names[role]}`));
 
       const grid = el('div', { class: 'score-grid', style: 'margin-bottom: 0;' });
 
@@ -1632,8 +1967,8 @@
       const bGot = item.B.guess === item.A.answer;
 
       detail.innerHTML = `
-        <div><strong style="color: var(--accent-a)">${state.names.A}</strong>：選${item.A.answer === 'a' ? item.question.a : item.question.b}　猜${item.A.guess === 'a' ? item.question.a : item.question.b} ${aGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
-        <div><strong style="color: var(--accent-b)">${state.names.B}</strong>：選${item.B.answer === 'a' ? item.question.a : item.question.b}　猜${item.B.guess === 'a' ? item.question.a : item.question.b} ${bGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
+        <div><strong style="color: var(--accent-a)">${getAvatar('A')} ${state.names.A}</strong>：選${item.A.answer === 'a' ? item.question.a : item.question.b}　猜${item.A.guess === 'a' ? item.question.a : item.question.b} ${aGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
+        <div><strong style="color: var(--accent-b)">${getAvatar('B')} ${state.names.B}</strong>：選${item.B.answer === 'a' ? item.question.a : item.question.b}　猜${item.B.guess === 'a' ? item.question.a : item.question.b} ${bGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
         <div style="margin-top: 6px;">
           ${aGot ? '<span class="pill pill-guess">A 默契+1</span>' : ''}
           ${bGot ? '<span class="pill pill-guess">B 默契+1</span>' : ''}
