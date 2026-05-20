@@ -1219,6 +1219,9 @@
     badge.onclick = async () => {
       const newName = prompt('改個名字吧（例如你的暱稱）', state.names[myRole]);
       if (newName && newName.trim()) {
+        // 先撈雲端最新版，避免覆蓋對方剛改的資料
+        const fresh = await loadState();
+        state = fresh;
         state.names[myRole] = newName.trim().slice(0, 10);
         await saveState();
         render();
@@ -1266,6 +1269,8 @@
     menu.appendChild(makeItem('改名字', async () => {
       const newName = prompt('改個名字吧', state.names[myRole]);
       if (newName && newName.trim()) {
+        const fresh = await loadState();
+        state = fresh;
         state.names[myRole] = newName.trim().slice(0, 10);
         await saveState();
         render();
@@ -1398,6 +1403,8 @@
       class: 'btn',
       style: 'flex: 1; margin: 0;',
       onclick: async () => {
+        const fresh = await loadState();
+        state = fresh;
         if (!state.avatars) state.avatars = { A: '🐱', B: '🐶' };
         state.avatars[myRole] = chosen;
         await saveState();
