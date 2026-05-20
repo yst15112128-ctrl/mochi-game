@@ -1123,9 +1123,18 @@
 
   function renderHeader() {
     const h = el('div', { class: 'header' });
-    h.appendChild(el('div', { class: 'title' }, '默契猜猜'));
 
+    // 左邊：標題 + 房間代碼
+    const left = el('div', { style: 'display: flex; flex-direction: column; gap: 2px;' });
+    left.appendChild(el('div', { class: 'title' }, '默契猜猜'));
+    left.appendChild(el('div', {
+      style: 'font-size: 11px; color: var(--muted); letter-spacing: 0.3px;'
+    }, `房間：${roomCode}`));
+    h.appendChild(left);
+
+    // 右邊：身分 badge + 選單按鈕
     const right = el('div', { style: 'display: flex; align-items: center; gap: 8px;' });
+
     const badge = el('div', {
       class: `who-badge who-${myRole.toLowerCase()}`
     }, state.names[myRole]);
@@ -1139,8 +1148,83 @@
       }
     };
     right.appendChild(badge);
+
+    // 選單按鈕（三個點）
+    const menuBtn = el('button', {
+      style: 'background: none; border: none; padding: 6px 8px; cursor: pointer; font-size: 18px; color: var(--ink); line-height: 1; border-radius: 6px;',
+      'aria-label': '選單',
+      onclick: (e) => {
+        e.stopPropagation();
+        toggleMenu(menuBtn);
+      }
+    }, '⋯');
+    right.appendChild(menuBtn);
+
     h.appendChild(right);
     return h;
+  }
+
+  // 浮出選單
+  function toggleMenu(anchor) {
+    // 如果已開啟,關掉
+    const existing = document.getElementById('floating-menu');
+    if (existing) { existing.remove(); return; }
+
+    const menu = el('div', {
+      id: 'floating-menu',
+      style: 'position: absolute; right: 16px; top: 60px; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); padding: 6px; z-index: 100; min-width: 160px;'
+    });
+
+    const makeItem = (label, onclick, danger = false) => el('button', {
+      style: `display: block; width: 100%; text-align: left; padding: 10px 12px; border: none; background: none; font-family: inherit; font-size: 14px; color: ${danger ? '#c54545' : 'var(--ink)'}; cursor: pointer; border-radius: 8px;`,
+      onmouseover: function() { this.style.background = 'var(--bg)'; },
+      onmouseout: function() { this.style.background = 'none'; },
+      onclick: (e) => {
+        e.stopPropagation();
+        menu.remove();
+        onclick();
+      }
+    }, label);
+
+    menu.appendChild(makeItem('改名字', async () => {
+      const newName = prompt('改個名字吧', state.names[myRole]);
+      if (newName && newName.trim()) {
+        state.names[myRole] = newName.trim().slice(0, 10);
+        await saveState();
+        render();
+      }
+    }));
+
+    menu.appendChild(makeItem('切換身分', async () => {
+      if (confirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
+        if (state.claimedRoles && myRole) {
+          state.claimedRoles[myRole] = false;
+          await saveState();
+        }
+        clearRole();
+        render();
+      }
+    }));
+
+    menu.appendChild(makeItem('離開房間', () => {
+      if (confirm('離開房間？資料還會留在雲端，下次輸入同樣代碼就能回來，身分也會自動沿用。')) {
+        clearRoom();
+        render();
+      }
+    }, true));
+
+    document.body.appendChild(menu);
+
+    // 點外面關閉
+    setTimeout(() => {
+      const closeHandler = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener('click', closeHandler);
+        }
+      };
+      document.addEventListener('click', closeHandler);
+    }, 0);
   }
 
   function renderNav() {
@@ -1486,43 +1570,6 @@
       }
     }, '重置分數');
     wrap.appendChild(resetBtn);
-
-    const swap = el('button', {
-      class: 'swap-btn',
-      style: 'display: block; margin: 20px auto 0;',
-      onclick: async () => {
-        if (confirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
-          // 釋放目前身分
-          if (state.claimedRoles && myRole) {
-            state.claimedRoles[myRole] = false;
-            await saveState();
-          }
-          clearRole();
-          render();
-        }
-      }
-    }, '切換身分');
-    wrap.appendChild(swap);
-
-    // 房間資訊 + 離開房間
-    const roomInfo = el('div', {
-      style: 'text-align: center; margin-top: 20px; font-size: 11px; color: var(--muted);'
-    }, `目前房間：${roomCode}`);
-    wrap.appendChild(roomInfo);
-
-    const leave = el('button', {
-      class: 'swap-btn',
-      style: 'display: block; margin: 4px auto 0;',
-      onclick: async () => {
-        if (confirm('離開房間？資料還會留在雲端，下次輸入同樣代碼就能回來，身分也會自動沿用。')) {
-          // 注意：不釋放身分，讓本人下次進來自動沿用
-          // 房間代碼跟身分都記在本機，clearRoom 只清房間代碼，role 仍在 localStorage
-          clearRoom();
-          render();
-        }
-      }
-    }, '離開房間');
-    wrap.appendChild(leave);
 
     return wrap;
   }
