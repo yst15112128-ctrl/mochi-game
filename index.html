@@ -798,10 +798,12 @@
   let state = null;
   let myRole = null; // 'A' or 'B'
   let countdownInterval = null;  // 倒數計時器
+  let dailyCountdownInterval = null;  // 「下一批題目」每分鐘更新
   let myRoundStartedQ = null;    // 我看到的是哪一題 (questionIdx)，避免重複觸發超時
   let myRoundStartTime = null;   // 我看到這題的本機時間戳 (Date.now())，計算倒數用
   let pendingAnswer = null;      // 答題畫面暫存：'a' | 'b'
   let pendingGuess = null;       // 答題畫面暫存：'a' | 'b'
+  const messageDrafts = {};      // history item id -> textarea draft text
   const ROUND_TIME_LIMIT = 20;   // 秒
   let currentView = 'play'; // play | history | add | scores
   let savedNamesCache = null;
@@ -889,6 +891,20 @@
     }
   }
 
+  // 算到下一個午夜還剩多少時間，回傳「XX 小時 XX 分」格式
+  function timeUntilMidnight() {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+    const diffMs = tomorrow - now;
+    const totalMinutes = Math.ceil(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours === 0) {
+      return `${minutes} 分`;
+    }
+    return `${hours} 小時 ${minutes} 分`;
+  }
+
   function remainingToday() {
     ensureDailyProgress();
     return Math.max(0, DAILY_LIMIT - state.dailyProgress.count);
@@ -928,6 +944,16 @@
   }
 
   async function startNewRound() {
+    // 先撈雲端最新版，避免覆蓋對方剛留言/改頭像/加題等
+    const fresh = await loadState();
+    state = fresh;
+
+    // 如果對方已經抽好新題了（rare race），就用對方那題不要覆蓋
+    if (state.currentRound) {
+      render();
+      return;
+    }
+
     const picked = pickNewQuestion();
     state.currentRound = {
       questionIdx: picked.index,
@@ -994,10 +1020,13 @@
     }
 
     state.history.unshift({
+      id: `h_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
       question: state.currentRound.question,
       A: { ...A },
       B: { ...B },
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      messages: [],          // { by: 'A'|'B', text: string, at: ISO }
+      wantDiscuss: { A: false, B: false }
     });
     state.history = state.history.slice(0, 100);
 
@@ -1068,6 +1097,7 @@
     if (currentView === 'play') app.appendChild(renderPlay());
     else if (currentView === 'scores') app.appendChild(renderScores());
     else if (currentView === 'history') app.appendChild(renderHistory());
+    else if (currentView === 'review') app.appendChild(renderReview());
     else if (currentView === 'add') app.appendChild(renderAdd());
   }
 
@@ -1198,12 +1228,28 @@
   function renderHeader() {
     const h = el('div', { class: 'header' });
 
-    // 左邊：標題 + 房間代碼
+    // 左邊：標題 + 房間代碼 + 對方的小資訊
     const left = el('div', { style: 'display: flex; flex-direction: column; gap: 2px;' });
     left.appendChild(el('div', { class: 'title' }, '默契猜猜'));
-    left.appendChild(el('div', {
-      style: 'font-size: 11px; color: var(--muted); letter-spacing: 0.3px;'
-    }, `房間：${roomCode}`));
+
+    const subRow = el('div', { style: 'display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted);' });
+    subRow.appendChild(el('span', {}, `房間：${roomCode}`));
+
+    // 對方資訊（只在已選身分、雙方都在房間時顯示）
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    const otherClaimed = state.claimedRoles && state.claimedRoles[otherRole];
+    if (otherClaimed) {
+      subRow.appendChild(el('span', { style: 'opacity: 0.4;' }, '·'));
+      subRow.appendChild(el('span', {
+        style: `display: inline-flex; align-items: center; gap: 3px; color: var(--accent-${otherRole.toLowerCase()}); font-weight: 600;`
+      }));
+      subRow.lastChild.innerHTML = `${getAvatar(otherRole)} ${escapeHtml(state.names[otherRole])}`;
+    } else {
+      subRow.appendChild(el('span', { style: 'opacity: 0.4;' }, '·'));
+      subRow.appendChild(el('span', { style: 'color: var(--muted); font-style: italic;' }, '等對方加入'));
+    }
+
+    left.appendChild(subRow);
     h.appendChild(left);
 
     // 右邊：身分 badge + 選單按鈕
@@ -1283,6 +1329,8 @@
 
     menu.appendChild(makeItem('切換身分', async () => {
       if (confirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
+        const fresh = await loadState();
+        state = fresh;
         if (state.claimedRoles && myRole) {
           state.claimedRoles[myRole] = false;
           await saveState();
@@ -1426,6 +1474,7 @@
       ['play', '今日'],
       ['scores', '分數'],
       ['history', '紀錄'],
+      ['review', '回顧'],
       ['add', '加題']
     ];
     items.forEach(([k, label]) => {
@@ -1448,10 +1497,24 @@
     if (!state.currentRound) {
       // 今天額度用完
       if (remaining === 0) {
+        startDailyCountdown();  // 啟動每分鐘更新
         const card = el('div', { class: 'card', style: 'text-align: center; padding: 40px 20px;' });
         card.appendChild(el('div', { style: 'font-size: 36px; margin-bottom: 10px;' }, '🌙'));
         card.appendChild(el('div', { style: 'font-size: 16px; font-weight: 600; margin-bottom: 6px;' }, '今天的 3 題都答完囉'));
-        card.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted);' }, '明天再來！'));
+        card.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted); margin-bottom: 14px;' }, '明天再來！'));
+
+        // 倒數到下一批題目
+        const countdown = el('div', {
+          style: 'background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: 10px 14px; display: inline-block;'
+        });
+        countdown.appendChild(el('div', {
+          style: 'font-size: 11px; color: var(--muted); letter-spacing: 0.8px; margin-bottom: 4px;'
+        }, '距離下一批題目'));
+        countdown.appendChild(el('div', {
+          style: 'font-size: 15px; font-weight: 700; color: var(--accent-a);'
+        }, `⏳ ${timeUntilMidnight()}`));
+        card.appendChild(countdown);
+
         wrap.appendChild(card);
 
         // 也顯示今天答了什麼
@@ -1563,10 +1626,23 @@
       }
 
       if (remainAfter === 0) {
+        startDailyCountdown();
         const done = el('div', { class: 'card', style: 'text-align: center; padding: 20px;' });
         done.appendChild(el('div', { style: 'font-size: 24px; margin-bottom: 6px;' }, '🌙'));
         done.appendChild(el('div', { style: 'font-size: 14px; font-weight: 600;' }, '今天的 3 題完成！'));
-        done.appendChild(el('div', { style: 'font-size: 12px; color: var(--muted); margin-top: 4px;' }, '明天見～'));
+        done.appendChild(el('div', { style: 'font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 12px;' }, '明天見～'));
+
+        const countdown = el('div', {
+          style: 'background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 14px; display: inline-block; margin-bottom: 4px;'
+        });
+        countdown.appendChild(el('div', {
+          style: 'font-size: 10px; color: var(--muted); letter-spacing: 0.8px; margin-bottom: 3px;'
+        }, '距離下一批題目'));
+        countdown.appendChild(el('div', {
+          style: 'font-size: 14px; font-weight: 700; color: var(--accent-a);'
+        }, `⏳ ${timeUntilMidnight()}`));
+        done.appendChild(countdown);
+
         const clearBtn = el('button', {
           class: 'btn btn-ghost',
           style: 'margin-top: 12px;',
@@ -1751,6 +1827,34 @@
     }
   }
 
+  // 每分鐘更新一次「距離下一批題目」倒數
+  function startDailyCountdown() {
+    if (dailyCountdownInterval) return;  // 已經在跑就不重複啟動
+    dailyCountdownInterval = setInterval(() => {
+      // 如果切到別的畫面（不是「今日且額度用完」），停掉
+      if (currentView !== 'play') {
+        stopDailyCountdown();
+        return;
+      }
+      ensureDailyProgress();
+      if (remainingToday() > 0) {
+        // 午夜過了、額度重置 → 停掉倒數、重新渲染
+        stopDailyCountdown();
+        render();
+        return;
+      }
+      // 還是答完的狀態 → 更新倒數
+      render();
+    }, 60000);  // 每分鐘更新
+  }
+
+  function stopDailyCountdown() {
+    if (dailyCountdownInterval) {
+      clearInterval(dailyCountdownInterval);
+      dailyCountdownInterval = null;
+    }
+  }
+
   function startCountdown(fillEl, textEl) {
     stopCountdown();
     if (!myRoundStartTime) myRoundStartTime = Date.now();
@@ -1887,7 +1991,159 @@
     });
     wrap.appendChild(scoreCard);
 
+    // 留言 + 想討論這題（用 history[0] 當作這題的 anchor）
+    const historyItem = state.history[0];  // 剛揭曉的這題會在最上面
+    if (historyItem) {
+      wrap.appendChild(renderHistoryActions(historyItem, true));
+    }
+
     return wrap;
+  }
+
+  // 共用：留言 + 想討論的 UI（揭曉、歷史紀錄都會用到）
+  function renderHistoryActions(item, expanded) {
+    const wrap = el('div', { style: 'margin-bottom: 14px;' });
+
+    if (!item.messages) item.messages = [];
+    if (!item.wantDiscuss) item.wantDiscuss = { A: false, B: false };
+
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    const iWantDiscuss = item.wantDiscuss[myRole];
+    const otherWantDiscuss = item.wantDiscuss[otherRole];
+    const anyDiscuss = iWantDiscuss || otherWantDiscuss;
+
+    // 兩顆動作按鈕
+    const btnRow = el('div', { style: 'display: flex; gap: 8px; margin-bottom: 10px;' });
+
+    const msgBtn = el('button', {
+      class: 'btn btn-ghost',
+      style: 'margin: 0; padding: 10px; font-size: 12px; flex: 1;',
+      onclick: () => {
+        toggleMessageBox(item, msgArea);
+      }
+    }, item.messages.length > 0 ? `💬 留言 (${item.messages.length})` : '💬 留言給對方');
+    btnRow.appendChild(msgBtn);
+
+    const discussBtn = el('button', {
+      class: 'btn btn-ghost',
+      style: `margin: 0; padding: 10px; font-size: 12px; flex: 1; ${iWantDiscuss ? 'background: var(--soft-a); border-color: var(--accent-a); color: var(--accent-a);' : ''}`,
+      onclick: async () => {
+        // 先撈雲端最新版避免覆蓋
+        const fresh = await loadState();
+        const freshItem = findHistoryItemById(fresh, item.id);
+        if (!freshItem) return;
+        if (!freshItem.wantDiscuss) freshItem.wantDiscuss = { A: false, B: false };
+        freshItem.wantDiscuss[myRole] = !freshItem.wantDiscuss[myRole];
+        state = fresh;
+        await saveState();
+        render();
+      }
+    }, iWantDiscuss ? '🔖 已標記討論' : '🔖 想討論這題');
+    btnRow.appendChild(discussBtn);
+
+    wrap.appendChild(btnRow);
+
+    // 對方標記了「想討論」的提示
+    if (otherWantDiscuss && !iWantDiscuss) {
+      const hint = el('div', {
+        style: 'background: #fff5e6; border: 1px dashed var(--gold); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #8a6d1e; margin-bottom: 10px;'
+      }, `🔖 ${getAvatar(otherRole)} ${state.names[otherRole]} 想討論這題`);
+      wrap.appendChild(hint);
+    }
+
+    // 留言區（預設依 expanded 參數決定要不要展開；有草稿時自動展開）
+    const hasDraft = !!messageDrafts[item.id];
+    const shouldExpand = expanded || item.messages.length > 0 || hasDraft;
+    const msgArea = el('div', { style: shouldExpand ? '' : 'display: none;' });
+    wrap.appendChild(msgArea);
+    renderMessageArea(item, msgArea);
+
+    return wrap;
+  }
+
+  function toggleMessageBox(item, msgArea) {
+    if (msgArea.style.display === 'none') {
+      msgArea.style.display = '';
+    } else {
+      // 已展開且沒留言 → 收起；有留言則一直展開
+      if (item.messages.length === 0) {
+        msgArea.style.display = 'none';
+      }
+    }
+    renderMessageArea(item, msgArea);
+  }
+
+  function renderMessageArea(item, container) {
+    container.innerHTML = '';
+
+    // 訊息列表
+    item.messages.forEach(msg => {
+      const isMine = msg.by === myRole;
+      const otherRole = msg.by === 'A' ? 'B' : 'A';
+      const bubble = el('div', {
+        style: `background: ${msg.by === 'A' ? 'var(--soft-a)' : 'var(--soft-b)'}; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; color: ${msg.by === 'A' ? '#5a3a2a' : '#2f4a55'}; line-height: 1.5;`
+      });
+      const from = el('div', {
+        style: 'font-size: 11px; font-weight: 700; margin-bottom: 4px; opacity: 0.7;'
+      }, isMine ? `${getAvatar(msg.by)} 我` : `${getAvatar(msg.by)} ${state.names[msg.by]}`);
+      bubble.appendChild(from);
+      bubble.appendChild(document.createTextNode(msg.text));
+      container.appendChild(bubble);
+    });
+
+    // 輸入區
+    const inputWrap = el('div', { style: 'margin-top: 8px;' });
+    const textarea = el('textarea', {
+      placeholder: '留言給對方...',
+      style: 'width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px; font-size: 13px; font-family: inherit; resize: none; height: 56px; background: var(--bg);',
+      oninput: function() {
+        messageDrafts[item.id] = this.value;
+      }
+    });
+    // 恢復草稿
+    if (messageDrafts[item.id]) {
+      textarea.value = messageDrafts[item.id];
+    }
+    inputWrap.appendChild(textarea);
+
+    const sendBtn = el('button', {
+      class: 'btn',
+      style: 'margin-top: 6px; padding: 10px; font-size: 13px;',
+      onclick: async () => {
+        const text = textarea.value.trim();
+        if (!text) return;
+        sendBtn.disabled = true;
+        sendBtn.textContent = '送出中...';
+
+        const fresh = await loadState();
+        const freshItem = findHistoryItemById(fresh, item.id);
+        if (!freshItem) {
+          alert('找不到這題的紀錄');
+          sendBtn.disabled = false;
+          sendBtn.textContent = '送出';
+          return;
+        }
+        if (!freshItem.messages) freshItem.messages = [];
+        freshItem.messages.push({
+          by: myRole,
+          text: text.slice(0, 300),
+          at: new Date().toISOString()
+        });
+        state = fresh;
+        delete messageDrafts[item.id];  // 送出後清掉草稿
+        await saveState();
+        render();
+      }
+    }, '送出');
+    inputWrap.appendChild(sendBtn);
+
+    container.appendChild(inputWrap);
+  }
+
+  // 用 id 找到對應的 history item
+  function findHistoryItemById(stateObj, id) {
+    if (!stateObj.history) return null;
+    return stateObj.history.find(h => h.id === id) || null;
   }
 
   function renderScores() {
@@ -1933,6 +2189,8 @@
       class: 'btn btn-ghost',
       onclick: async () => {
         if (confirm('確定要重置所有分數嗎？歷史紀錄和題目會保留。')) {
+          const fresh = await loadState();
+          state = fresh;
           state.scores = { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} };
           await saveState();
           render();
@@ -1953,17 +2211,41 @@
     }
 
     state.history.forEach(item => {
+      // 確保 id 存在（舊資料相容）
+      if (!item.id) item.id = `legacy_${item.date}`;
+
       const card = el('div', { class: 'history-item' });
 
       const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
-      const topRow = el('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;' });
+      const topRow = el('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 6px;' });
+
+      const leftPills = el('div', { style: 'display: flex; gap: 4px; align-items: center; flex-wrap: wrap;' });
       const catTag = el('span', {
         style: `font-size: 10px; padding: 2px 8px; border-radius: 8px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600;`
       }, catInfo.name);
-      topRow.appendChild(catTag);
+      leftPills.appendChild(catTag);
+
+      // 「想討論」標記
+      const wd = item.wantDiscuss || {};
+      if (wd.A || wd.B) {
+        const dpill = el('span', {
+          style: 'font-size: 10px; padding: 2px 8px; border-radius: 8px; background: #fff5e6; color: #8a6d1e; font-weight: 600;'
+        }, '🔖 想討論');
+        leftPills.appendChild(dpill);
+      }
+      // 留言數標記
+      const msgs = item.messages || [];
+      if (msgs.length > 0) {
+        const mpill = el('span', {
+          style: 'font-size: 10px; padding: 2px 8px; border-radius: 8px; background: var(--soft-b); color: var(--accent-b); font-weight: 600;'
+        }, `💬 ${msgs.length}`);
+        leftPills.appendChild(mpill);
+      }
+
+      topRow.appendChild(leftPills);
       const date = new Date(item.date);
       const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-      topRow.appendChild(el('span', { style: 'font-size: 11px; color: var(--muted);' }, dateStr));
+      topRow.appendChild(el('span', { style: 'font-size: 11px; color: var(--muted); white-space: nowrap;' }, dateStr));
       card.appendChild(topRow);
 
       card.appendChild(el('div', { class: 'history-q' }, item.question.q));
@@ -1983,8 +2265,185 @@
         </div>
       `;
       card.appendChild(detail);
+
+      // 留言 + 想討論
+      card.appendChild(el('div', { style: 'margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);' }));
+      card.appendChild(renderHistoryActions(item, false));
+
       wrap.appendChild(card);
     });
+
+    return wrap;
+  }
+
+  // ============ 每週回顧 ============
+  // 取得指定週次的開始/結束（週一為一週開始）
+  function getWeekRange(weekOffset) {
+    // weekOffset: 0=本週, -1=上週, etc
+    const now = new Date();
+    const day = now.getDay();  // 0=Sun, 1=Mon, ..., 6=Sat
+    const daysFromMonday = day === 0 ? 6 : day - 1;
+    const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+    const start = new Date(thisMonday);
+    start.setDate(start.getDate() + weekOffset * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return { start, end };
+  }
+
+  function formatDate(d) {
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  }
+
+  let reviewWeekOffset = 0;  // 0 = 本週, -1 = 上週
+
+  function renderReview() {
+    const wrap = el('div');
+
+    const { start, end } = getWeekRange(reviewWeekOffset);
+    const endDisplay = new Date(end);
+    endDisplay.setDate(endDisplay.getDate() - 1);  // 顯示週日（最後一天）
+
+    // 篩選這週的歷史
+    const weekItems = (state.history || []).filter(h => {
+      const d = new Date(h.date);
+      return d >= start && d < end;
+    });
+
+    // 切週按鈕
+    const weekNav = el('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 8px;' });
+
+    const prevBtn = el('button', {
+      style: 'background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; cursor: pointer; font-family: inherit;',
+      onclick: () => { reviewWeekOffset--; render(); }
+    }, '←');
+    weekNav.appendChild(prevBtn);
+
+    const label = reviewWeekOffset === 0 ? '本週' : reviewWeekOffset === -1 ? '上週' : `${-reviewWeekOffset} 週前`;
+    weekNav.appendChild(el('div', {
+      style: 'flex: 1; text-align: center; font-size: 13px; font-weight: 600;'
+    }, label));
+
+    const nextBtn = el('button', {
+      style: `background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; cursor: pointer; font-family: inherit; ${reviewWeekOffset >= 0 ? 'opacity: 0.3; cursor: not-allowed;' : ''}`,
+      onclick: () => { if (reviewWeekOffset < 0) { reviewWeekOffset++; render(); } }
+    }, '→');
+    weekNav.appendChild(nextBtn);
+    wrap.appendChild(weekNav);
+
+    // Banner 卡片
+    const banner = el('div', {
+      style: 'background: linear-gradient(135deg, var(--soft-a), #f7dde5); border-radius: 18px; padding: 18px; text-align: center; margin-bottom: 14px;'
+    });
+    banner.appendChild(el('div', {
+      style: 'font-size: 13px; color: var(--accent-a); font-weight: 600; letter-spacing: 1px;'
+    }, reviewWeekOffset === 0 ? '本週回顧' : '回顧'));
+    banner.appendChild(el('div', {
+      style: 'font-size: 16px; font-weight: 700; margin-top: 4px; color: #5a3a2a;'
+    }, `${formatDate(start)} – ${formatDate(endDisplay)}`));
+    wrap.appendChild(banner);
+
+    // 沒有資料
+    if (weekItems.length === 0) {
+      wrap.appendChild(el('div', { class: 'empty' }, '這週還沒有玩過題目'));
+      return wrap;
+    }
+
+    // 統計
+    let aGuessCount = 0, bGuessCount = 0, syncCount = 0;
+    weekItems.forEach(h => {
+      if (h.A.guess === h.B.answer) aGuessCount++;
+      if (h.B.guess === h.A.answer) bGuessCount++;
+      if (h.A.answer === h.B.answer) syncCount++;
+    });
+    const totalAttempts = weekItems.length * 2;  // 每題兩人各猜一次
+    const guessHits = aGuessCount + bGuessCount;
+    const hitRate = totalAttempts > 0 ? Math.round((guessHits / totalAttempts) * 100) : 0;
+
+    const grid = el('div', { class: 'score-grid' });
+
+    const b1 = el('div', { class: 'score-box' });
+    b1.appendChild(el('div', { class: 'score-num', style: 'color: var(--accent-a);' }, `${weekItems.length}`));
+    b1.appendChild(el('div', { class: 'score-label' }, '本週題目'));
+    grid.appendChild(b1);
+
+    const b2 = el('div', { class: 'score-box' });
+    b2.appendChild(el('div', { class: 'score-num', style: 'color: var(--green);' }, `${hitRate}%`));
+    b2.appendChild(el('div', { class: 'score-label' }, '本週命中率'));
+    grid.appendChild(b2);
+    wrap.appendChild(grid);
+
+    // 同步分 + 個人猜中
+    const detail = el('div', { class: 'card' });
+    detail.appendChild(el('div', { class: 'label' }, '本週分數變化'));
+    detail.appendChild(el('div', {
+      style: 'font-size: 13px; line-height: 1.9;'
+    }));
+    detail.lastChild.innerHTML = `
+      <div>${getAvatar('A')} <strong style="color:var(--accent-a)">${escapeHtml(state.names.A)}</strong>：默契 +${aGuessCount}　同步 +${syncCount}</div>
+      <div>${getAvatar('B')} <strong style="color:var(--accent-b)">${escapeHtml(state.names.B)}</strong>：默契 +${bGuessCount}　同步 +${syncCount}</div>
+    `;
+    wrap.appendChild(detail);
+
+    // 最有默契的題目（兩人都猜對 或 兩人選一樣）
+    const matchTopics = weekItems.filter(h => {
+      const aG = h.A.guess === h.B.answer;
+      const bG = h.B.guess === h.A.answer;
+      const sync = h.A.answer === h.B.answer;
+      return (aG && bG) || sync;
+    });
+    if (matchTopics.length > 0) {
+      const matchCard = el('div', { class: 'card' });
+      matchCard.appendChild(el('div', { class: 'label' }, `本週最有默契（${matchTopics.length}）`));
+      matchTopics.slice(0, 3).forEach(item => {
+        const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+        const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+        row.innerHTML = `<span style="display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:${catInfo.bg};color:${catInfo.color};font-weight:600;margin-bottom:4px;">${catInfo.name}</span><div style="font-weight:600;margin-top:2px;">${escapeHtml(item.question.q)}</div>`;
+        matchCard.appendChild(row);
+      });
+      if (matchCard.lastChild) matchCard.lastChild.style.borderBottom = 'none';
+      wrap.appendChild(matchCard);
+    }
+
+    // 最意外的題目（兩人選不同 且 兩人都猜錯）
+    const surpriseTopics = weekItems.filter(h => {
+      const aG = h.A.guess === h.B.answer;
+      const bG = h.B.guess === h.A.answer;
+      const sync = h.A.answer === h.B.answer;
+      return !sync && !aG && !bG;
+    });
+    if (surpriseTopics.length > 0) {
+      const surpriseCard = el('div', { class: 'card' });
+      surpriseCard.appendChild(el('div', { class: 'label' }, `本週最意外（${surpriseTopics.length}）`));
+      surpriseTopics.slice(0, 3).forEach(item => {
+        const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+        const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+        const aChose = item.A.answer === 'a' ? item.question.a : item.question.b;
+        const bChose = item.B.answer === 'a' ? item.question.a : item.question.b;
+        row.innerHTML = `<span style="display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:${catInfo.bg};color:${catInfo.color};font-weight:600;margin-bottom:4px;">${catInfo.name}</span><div style="font-weight:600;margin-top:2px;">${escapeHtml(item.question.q)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${getAvatar('A')} ${escapeHtml(aChose)}　${getAvatar('B')} ${escapeHtml(bChose)}</div>`;
+        surpriseCard.appendChild(row);
+      });
+      if (surpriseCard.lastChild) surpriseCard.lastChild.style.borderBottom = 'none';
+      wrap.appendChild(surpriseCard);
+    }
+
+    // 想討論的題目
+    const wantDiscussTopics = weekItems.filter(h => {
+      const wd = h.wantDiscuss || {};
+      return wd.A || wd.B;
+    });
+    if (wantDiscussTopics.length > 0) {
+      const wdCard = el('div', { class: 'card' });
+      wdCard.appendChild(el('div', { class: 'label' }, `本週想討論（${wantDiscussTopics.length}）`));
+      wantDiscussTopics.forEach(item => {
+        const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+        const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+        row.innerHTML = `<span style="display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:${catInfo.bg};color:${catInfo.color};font-weight:600;margin-bottom:4px;">${catInfo.name}</span><div style="font-weight:600;margin-top:2px;">🔖 ${escapeHtml(item.question.q)}</div>`;
+        wdCard.appendChild(row);
+      });
+      if (wdCard.lastChild) wdCard.lastChild.style.borderBottom = 'none';
+      wrap.appendChild(wdCard);
+    }
 
     return wrap;
   }
@@ -2040,6 +2499,9 @@
           alert('三個欄位都要填喔');
           return;
         }
+        const fresh = await loadState();
+        state = fresh;
+        if (!state.customQuestions) state.customQuestions = [];
         state.customQuestions.push({ q, a, b, cat: selectedCat, addedBy: myRole });
         await saveState();
         qInput.value = '';
@@ -2070,8 +2532,17 @@
           class: 'btn btn-ghost btn-small',
           onclick: async () => {
             if (confirm('刪掉這題？')) {
-              state.customQuestions.splice(idx, 1);
-              await saveState();
+              // 用題目內容比對找到對應的，不用 index（對方可能剛加題、index 會錯位）
+              const fresh = await loadState();
+              state = fresh;
+              if (!state.customQuestions) state.customQuestions = [];
+              const realIdx = state.customQuestions.findIndex(cq =>
+                cq.q === q.q && cq.a === q.a && cq.b === q.b
+              );
+              if (realIdx >= 0) {
+                state.customQuestions.splice(realIdx, 1);
+                await saveState();
+              }
               render();
             }
           }
@@ -2128,6 +2599,9 @@
       myRole = savedRole;
     } else if (savedRole && (!state.claimedRoles || !state.claimedRoles[savedRole])) {
       // 雲端沒有這個 claim（可能是房間被重置），但本機還記得 → 自動補回
+      // 再撈一次最新確保不覆蓋對方
+      const fresh = await loadState();
+      state = fresh;
       if (!state.claimedRoles) state.claimedRoles = { A: false, B: false };
       state.claimedRoles[savedRole] = true;
       myRole = savedRole;
