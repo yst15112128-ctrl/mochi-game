@@ -774,7 +774,7 @@
     { cat: 'taste', q: "選一種家飾", a: "植物盆栽", b: "畫作擺飾" }
   ];
 
-  const DAILY_LIMIT = 3;
+  const DAILY_LIMIT = 5;
 
   // ============ 狀態管理 ============
   // ============ 房間機制 ============
@@ -884,11 +884,30 @@
   }
 
   function ensureDailyProgress() {
-    if (!state.dailyProgress) state.dailyProgress = { date: '', count: 0 };
+    if (!state.dailyProgress) state.dailyProgress = { date: '', count: 0, plan: null };
     const today = todayKey();
     if (state.dailyProgress.date !== today) {
-      state.dailyProgress = { date: today, count: 0 };
+      // 新的一天：生成今日抽題計畫（1 深度 + 1 自訂 + 3 隨機，洗牌後）
+      state.dailyProgress = {
+        date: today,
+        count: 0,
+        plan: shuffle(['deep', 'custom', 'random', 'random', 'random'])
+      };
     }
+    // 兼容舊資料（之前沒 plan 欄位）
+    if (!state.dailyProgress.plan) {
+      state.dailyProgress.plan = shuffle(['deep', 'custom', 'random', 'random', 'random']);
+    }
+  }
+
+  // Fisher-Yates 洗牌
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
   }
 
   // 算到下一個午夜還剩多少時間，回傳「XX 小時 XX 分」格式
@@ -927,19 +946,51 @@
     ];
   }
 
+  // 依今日計畫選一題。如果計畫指定 custom 但題庫不夠，回傳 { needCustom: true }
   function pickNewQuestion() {
-    const all = getAllQuestions();
-    const available = all
-      .map((q, i) => ({q, i}))
-      .filter(x => !state.usedIndices.includes(x.i));
+    ensureDailyProgress();
+    const slotType = state.dailyProgress.plan[state.dailyProgress.count] || 'random';
 
-    if (available.length === 0) {
-      // 全部答過了，重設
-      state.usedIndices = [];
-      return pickNewQuestion();
+    const all = getAllQuestions();
+
+    // 過濾出符合 slot 類型且還沒用過的
+    let pool;
+    if (slotType === 'deep') {
+      pool = all
+        .map((q, i) => ({q, i}))
+        .filter(x => x.q.cat === 'deep' && !state.usedIndices.includes(x.i));
+      if (pool.length === 0) {
+        // 深度題用完了 → 從深度題池子重置（只重置深度，不動其他類別）
+        const allDeepIndices = all
+          .map((q, i) => ({q, i}))
+          .filter(x => x.q.cat === 'deep')
+          .map(x => x.i);
+        state.usedIndices = state.usedIndices.filter(i => !allDeepIndices.includes(i));
+        pool = all
+          .map((q, i) => ({q, i}))
+          .filter(x => x.q.cat === 'deep' && !state.usedIndices.includes(x.i));
+      }
+    } else if (slotType === 'custom') {
+      pool = all
+        .map((q, i) => ({q, i}))
+        .filter(x => x.q.source === 'custom' && !state.usedIndices.includes(x.i));
+      if (pool.length === 0) {
+        // 自訂題不夠 → 回報給上層處理（提示使用者）
+        return { needCustom: true };
+      }
+    } else {
+      // random：從整個池子隨機（排除已用）
+      pool = all
+        .map((q, i) => ({q, i}))
+        .filter(x => !state.usedIndices.includes(x.i));
+      if (pool.length === 0) {
+        // 全部答過了，重設所有
+        state.usedIndices = [];
+        pool = all.map((q, i) => ({q, i}));
+      }
     }
 
-    const pick = available[Math.floor(Math.random() * available.length)];
+    const pick = pool[Math.floor(Math.random() * pool.length)];
     return { index: pick.i, question: pick.q };
   }
 
@@ -955,6 +1006,14 @@
     }
 
     const picked = pickNewQuestion();
+
+    // 自訂題不夠 → 提示
+    if (picked.needCustom) {
+      alert('今天輪到自訂題了，但題庫不夠用 🥺\n去「加題」頁新增幾題吧！');
+      render();  // 不抽題、停在原畫面
+      return;
+    }
+
     state.currentRound = {
       questionIdx: picked.index,
       question: {
@@ -1500,7 +1559,7 @@
         startDailyCountdown();  // 啟動每分鐘更新
         const card = el('div', { class: 'card', style: 'text-align: center; padding: 40px 20px;' });
         card.appendChild(el('div', { style: 'font-size: 36px; margin-bottom: 10px;' }, '🌙'));
-        card.appendChild(el('div', { style: 'font-size: 16px; font-weight: 600; margin-bottom: 6px;' }, '今天的 3 題都答完囉'));
+        card.appendChild(el('div', { style: 'font-size: 16px; font-weight: 600; margin-bottom: 6px;' }, `今天的 ${DAILY_LIMIT} 題都答完囉`));
         card.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted); margin-bottom: 14px;' }, '明天再來！'));
 
         // 倒數到下一批題目
@@ -1543,8 +1602,31 @@
         `今天還有 ${remaining} 題`));
       card.appendChild(el('div', { style: 'font-size: 14px; margin-bottom: 16px;' },
         remaining === DAILY_LIMIT ? '開始今天的默契挑戰' : '繼續下一題'));
-      const btn = el('button', { class: 'btn', onclick: startNewRound }, '抽一題來玩');
-      card.appendChild(btn);
+
+      // 預先檢查：下一題如果是自訂題但題庫不夠，先警告
+      const nextSlot = state.dailyProgress.plan && state.dailyProgress.plan[state.dailyProgress.count];
+      const allQs = getAllQuestions();
+      const availableCustom = allQs
+        .map((q, i) => ({q, i}))
+        .filter(x => x.q.source === 'custom' && !state.usedIndices.includes(x.i));
+
+      if (nextSlot === 'custom' && availableCustom.length === 0) {
+        const warn = el('div', {
+          style: 'background: #fff5e6; border: 1px dashed var(--gold); border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 13px; color: #8a6d1e; line-height: 1.6;'
+        });
+        warn.innerHTML = '⚠️ 今天輪到自訂題了，但題庫不夠用 🥺<br>去「加題」頁新增幾題吧！';
+        card.appendChild(warn);
+
+        const goAddBtn = el('button', {
+          class: 'btn',
+          onclick: () => { currentView = 'add'; render(); }
+        }, '去加題');
+        card.appendChild(goAddBtn);
+      } else {
+        const btn = el('button', { class: 'btn', onclick: startNewRound }, '抽一題來玩');
+        card.appendChild(btn);
+      }
+
       wrap.appendChild(card);
       return wrap;
     }
@@ -1629,7 +1711,7 @@
         startDailyCountdown();
         const done = el('div', { class: 'card', style: 'text-align: center; padding: 20px;' });
         done.appendChild(el('div', { style: 'font-size: 24px; margin-bottom: 6px;' }, '🌙'));
-        done.appendChild(el('div', { style: 'font-size: 14px; font-weight: 600;' }, '今天的 3 題完成！'));
+        done.appendChild(el('div', { style: 'font-size: 14px; font-weight: 600;' }, `今天的 ${DAILY_LIMIT} 題完成！`));
         done.appendChild(el('div', { style: 'font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 12px;' }, '明天見～'));
 
         const countdown = el('div', {
