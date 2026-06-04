@@ -872,9 +872,28 @@
     };
   }
 
+  // 「遊戲日」設定：每天 21:00 切換到新的一天
+  const RESET_HOUR = 21;  // 24小時制，21:00 = 晚上 9 點
+
+  // 一次性 23:10 重置 cutoff：在此時間點之後、且尚未觸發過、就強制重置一次
+  // Date 用本機時區建構，台灣時間
+  // 這個窗口從「23:10」到「再過 24 小時」失效，避免未來無限觸發
+  const ONE_TIME_RESET_AT = new Date(2026, 5, 4, 23, 10, 0).getTime();  // 2026/6/4 23:10
+  const ONE_TIME_RESET_EXPIRES = ONE_TIME_RESET_AT + 24 * 60 * 60 * 1000;
+
+  // 取得「現在屬於哪個遊戲日」的 key
+  // 規則：21:00 之前 → 算前一日；21:00 之後 → 算今日
   function todayKey() {
-    const d = new Date();
-    return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+    const now = new Date();
+    let dayStart;
+    if (now.getHours() < RESET_HOUR) {
+      // 還沒到 21:00 → 屬於昨天那個遊戲日
+      dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    } else {
+      // 已過 21:00 → 屬於今天這個遊戲日
+      dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+    return `${dayStart.getFullYear()}-${dayStart.getMonth()+1}-${dayStart.getDate()}`;
   }
 
   // 取得玩家頭像（兼容舊資料）
@@ -884,14 +903,22 @@
   }
 
   function ensureDailyProgress() {
-    if (!state.dailyProgress) state.dailyProgress = { date: '', count: 0, plan: null };
+    if (!state.dailyProgress) state.dailyProgress = { date: '', count: 0, plan: null, lastResetAt: 0 };
     const today = todayKey();
-    if (state.dailyProgress.date !== today) {
-      // 新的一天：生成今日抽題計畫（1 深度 + 1 自訂 + 3 隨機，洗牌後）
+    const now = Date.now();
+
+    // 一次性 23:10 重置：今天過了 23:10、且這次重置還沒做過
+    const lastReset = state.dailyProgress.lastResetAt || 0;
+    const inOneTimeWindow = now >= ONE_TIME_RESET_AT && now < ONE_TIME_RESET_EXPIRES;
+    const needsOneTimeReset = inOneTimeWindow && lastReset < ONE_TIME_RESET_AT;
+
+    if (state.dailyProgress.date !== today || needsOneTimeReset) {
+      // 新的一天 or 一次性重置：生成今日抽題計畫
       state.dailyProgress = {
         date: today,
         count: 0,
-        plan: shuffle(['deep', 'custom', 'random', 'random', 'random'])
+        plan: shuffle(['deep', 'custom', 'random', 'random', 'random']),
+        lastResetAt: now
       };
     }
     // 兼容舊資料（之前沒 plan 欄位）
@@ -910,11 +937,18 @@
     return a;
   }
 
-  // 算到下一個午夜還剩多少時間，回傳「XX 小時 XX 分」格式
+  // 算到下一個「重置時間點」還剩多少時間，回傳「XX 小時 XX 分」格式
   function timeUntilMidnight() {
     const now = new Date();
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
-    const diffMs = tomorrow - now;
+    let nextReset;
+    if (now.getHours() < RESET_HOUR) {
+      // 還沒到今天的 21:00
+      nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate(), RESET_HOUR, 0, 0);
+    } else {
+      // 已過 21:00 → 明天的 21:00
+      nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, RESET_HOUR, 0, 0);
+    }
+    const diffMs = nextReset - now;
     const totalMinutes = Math.ceil(diffMs / 60000);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -1272,8 +1306,8 @@
     const leave = el('button', {
       class: 'swap-btn',
       style: 'display: block; margin: 20px auto 0;',
-      onclick: () => {
-        if (confirm('離開這個房間？')) {
+      onclick: async () => {
+        if (await customConfirm('離開這個房間？')) {
           clearRoom();
           render();
         }
@@ -1387,7 +1421,7 @@
     }));
 
     menu.appendChild(makeItem('切換身分', async () => {
-      if (confirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
+      if (await customConfirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
         const fresh = await loadState();
         state = fresh;
         if (state.claimedRoles && myRole) {
@@ -1399,8 +1433,8 @@
       }
     }));
 
-    menu.appendChild(makeItem('離開房間', () => {
-      if (confirm('離開房間？資料還會留在雲端，下次輸入同樣代碼就能回來，身分也會自動沿用。')) {
+    menu.appendChild(makeItem('離開房間', async () => {
+      if (await customConfirm('離開房間？資料還會留在雲端，下次輸入同樣代碼就能回來，身分也會自動沿用。')) {
         clearRoom();
         render();
       }
@@ -1421,6 +1455,50 @@
   }
 
   // Emoji 頭像選擇器（模態視窗）
+  // 自訂確認對話框（取代 native confirm，避免 PWA 模式下 confirm 失效）
+  function customConfirm(message, opts = {}) {
+    return new Promise((resolve) => {
+      // 清掉舊的
+      const old = document.getElementById('confirm-modal');
+      if (old) old.remove();
+
+      const overlay = el('div', {
+        id: 'confirm-modal',
+        style: 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 24px;'
+      });
+
+      const modal = el('div', {
+        style: 'background: white; border-radius: 18px; padding: 22px; max-width: 340px; width: 100%;'
+      });
+
+      const msg = el('div', {
+        style: 'font-size: 15px; line-height: 1.6; margin-bottom: 18px; color: var(--ink); white-space: pre-wrap;'
+      }, message);
+      modal.appendChild(msg);
+
+      const btnRow = el('div', { style: 'display: flex; gap: 8px;' });
+
+      const cancelBtn = el('button', {
+        class: 'btn btn-ghost',
+        style: 'flex: 1; margin: 0;',
+        onclick: () => { overlay.remove(); resolve(false); }
+      }, opts.cancelText || '取消');
+
+      const okBtn = el('button', {
+        class: 'btn',
+        style: `flex: 1; margin: 0; ${opts.danger ? 'background: #c54545;' : ''}`,
+        onclick: () => { overlay.remove(); resolve(true); }
+      }, opts.okText || '確定');
+
+      btnRow.appendChild(cancelBtn);
+      btnRow.appendChild(okBtn);
+      modal.appendChild(btnRow);
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+    });
+  }
+
   function showEmojiPicker() {
     // 移除舊的
     const existing = document.getElementById('emoji-modal');
@@ -2270,7 +2348,7 @@
     const resetBtn = el('button', {
       class: 'btn btn-ghost',
       onclick: async () => {
-        if (confirm('確定要重置所有分數嗎？歷史紀錄和題目會保留。')) {
+        if (await customConfirm('確定要重置所有分數嗎？歷史紀錄和題目會保留。', { danger: true, okText: '重置' })) {
           const fresh = await loadState();
           state = fresh;
           state.scores = { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} };
@@ -2613,7 +2691,7 @@
         const del = el('button', {
           class: 'btn btn-ghost btn-small',
           onclick: async () => {
-            if (confirm('刪掉這題？')) {
+            if (await customConfirm('刪掉這題？', { danger: true, okText: '刪除' })) {
               // 用題目內容比對找到對應的，不用 index（對方可能剛加題、index 會錯位）
               const fresh = await loadState();
               state = fresh;
