@@ -1,0 +1,2808 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="默契猜猜">
+<meta name="theme-color" content="#faf7f2">
+<title>默契猜猜</title>
+</head>
+<body>
+<div id="app"></div>
+
+<style>
+  :root {
+    --bg: #faf7f2;
+    --card: #ffffff;
+    --ink: #2a2a2a;
+    --muted: #8a8378;
+    --line: #ece6dc;
+    --accent-a: #e07856;
+    --accent-b: #6b8e9e;
+    --gold: #d4a84b;
+    --green: #7a9e5f;
+    --soft-a: #fce8df;
+    --soft-b: #dee9ed;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+    min-height: 100vh;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .who-badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  .who-a { background: var(--soft-a); color: var(--accent-a); }
+  .who-b { background: var(--soft-b); color: var(--accent-b); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+
+  .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .question {
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 18px;
+  }
+
+  .options {
+    display: grid;
+    gap: 10px;
+  }
+
+  .option {
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--ink);
+    transition: all 0.15s;
+  }
+
+  .option:hover { border-color: var(--ink); }
+  .option.selected {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: white;
+  }
+  .option.disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .step-hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 14px 0 8px;
+    text-align: center;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--ink);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 12px;
+  }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--line);
+  }
+  .btn-small {
+    padding: 8px 14px;
+    width: auto;
+    font-size: 13px;
+    margin-top: 0;
+  }
+
+  .nav {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .nav button {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--muted);
+  }
+  .nav button.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+
+  .score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .score-box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+  }
+  .score-num {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .score-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+  }
+
+  .reveal-banner {
+    background: var(--soft-a);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--accent-a);
+    font-weight: 600;
+  }
+  .reveal-banner.match { background: #e6f0db; color: var(--green); }
+
+  .reveal-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+    align-items: center;
+  }
+  .reveal-row:last-child { border-bottom: none; }
+  .reveal-who { font-weight: 600; font-size: 12px; }
+  .reveal-mark { font-size: 14px; }
+  .reveal-mark.correct { color: var(--green); }
+  .reveal-mark.wrong { color: var(--muted); }
+
+  .history-item {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .history-q { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .history-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .history-detail { font-size: 13px; line-height: 1.6; }
+  .pill {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-left: 4px;
+    font-weight: 600;
+  }
+  .pill-guess { background: #f3e8c7; color: #8a6d1e; }
+  .pill-sync { background: #dceacb; color: #4d6b35; }
+
+  .input, .textarea {
+    width: 100%;
+    border: 1.5px solid var(--line);
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .input:focus, .textarea:focus { outline: none; border-color: var(--ink); }
+
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .who-pick {
+    text-align: center;
+    padding: 30px 0;
+  }
+  .who-pick h2 {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+  .who-pick p {
+    color: var(--muted);
+    margin-bottom: 30px;
+    font-size: 14px;
+  }
+  .who-options {
+    display: grid;
+    gap: 12px;
+  }
+  .who-option {
+    padding: 20px;
+    border-radius: 14px;
+    border: 2px solid var(--line);
+    background: var(--card);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .who-option.a { border-color: var(--accent-a); color: var(--accent-a); }
+  .who-option.b { border-color: var(--accent-b); color: var(--accent-b); }
+
+  .waiting {
+    text-align: center;
+    padding: 30px 20px;
+  }
+  .waiting-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  .waiting-text {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .waiting-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .name-edit {
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-family: inherit;
+    text-decoration: underline;
+  }
+
+  .swap-btn {
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-family: inherit;
+    text-decoration: underline;
+    margin-top: 8px;
+  }
+
+  .info-tip {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+</style>
+
+<script type="module">
+  // ============ Firebase 初始化 ============
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, onSnapshot, getDoc
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAd1i8aP2XTtJ_CdVlwrSkF_1gUWfeb-q8",
+    authDomain: "mochi-game-c9b8f.firebaseapp.com",
+    projectId: "mochi-game-c9b8f",
+    storageBucket: "mochi-game-c9b8f.firebasestorage.app",
+    messagingSenderId: "271302596753",
+    appId: "1:271302596753:web:4d70fff5f8aa02906f8730"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
+
+  // ============ 內建題庫（依分類）============
+  const CATEGORIES = {
+    daily:   { name: '日常生活', color: '#e07856', bg: '#fce8df' },
+    couple:  { name: '情侶向',   color: '#c75d7e', bg: '#f7dde5' },
+    friend:  { name: '朋友向',   color: '#6b8e9e', bg: '#dee9ed' },
+    deep:    { name: '深度問題', color: '#7b6aa1', bg: '#e4dff0' },
+    funny:   { name: '無厘頭',   color: '#d4a84b', bg: '#f7ebcb' },
+    taste:   { name: '口味偏好', color: '#7a9e5f', bg: '#e0ecd2' }
+  };
+
+    const BUILTIN_QUESTIONS = [
+    // ============ 日常生活 (60) ============
+    { cat: 'daily', q: "如果只能選一個當早餐", a: "鹹的（蛋餅、飯糰）", b: "甜的（鬆餅、麵包）" },
+    { cat: 'daily', q: "週末理想活動", a: "出門走走透氣", b: "在家躺著耍廢" },
+    { cat: 'daily', q: "睡覺一定要", a: "完全黑", b: "有點微光" },
+    { cat: 'daily', q: "去新餐廳會", a: "點招牌", b: "點沒吃過的" },
+    { cat: 'daily', q: "看電影選位置", a: "中間靠前", b: "後排角落" },
+    { cat: 'daily', q: "拍照習慣", a: "自拍", b: "拍風景" },
+    { cat: 'daily', q: "排隊買的東西", a: "願意排", b: "絕對不排" },
+    { cat: 'daily', q: "早睡早起 vs 晚睡晚起", a: "早睡早起", b: "晚睡晚起" },
+    { cat: 'daily', q: "看書習慣", a: "紙本", b: "電子書" },
+    { cat: 'daily', q: "手機通知", a: "全開", b: "幾乎全關" },
+    { cat: 'daily', q: "如果迷路了", a: "馬上查地圖", b: "先走走看" },
+    { cat: 'daily', q: "穿衣風格偏向", a: "舒服為主", b: "好看為主" },
+    { cat: 'daily', q: "洗澡時間", a: "早上洗", b: "晚上洗" },
+    { cat: 'daily', q: "刷牙方式", a: "電動牙刷", b: "傳統牙刷" },
+    { cat: 'daily', q: "出門前", a: "前一晚就準備好", b: "出門前才弄" },
+    { cat: 'daily', q: "通勤習慣", a: "聽音樂或 podcast", b: "什麼都不聽" },
+    { cat: 'daily', q: "傘的態度", a: "永遠帶著", b: "下雨才買便利商店的" },
+    { cat: 'daily', q: "看 YouTube", a: "2 倍速播放", b: "正常速度" },
+    { cat: 'daily', q: "鬧鐘", a: "一響就起", b: "貪睡好幾次" },
+    { cat: 'daily', q: "睡前一定要", a: "滑手機", b: "什麼都不做直接睡" },
+    { cat: 'daily', q: "走路速度", a: "很快", b: "悠悠地走" },
+    { cat: 'daily', q: "錢包/卡片", a: "整齊分類", b: "全部塞一起" },
+    { cat: 'daily', q: "看電視/影集", a: "邊吃飯邊看", b: "專心看不做別的" },
+    { cat: 'daily', q: "睡覺姿勢", a: "側睡", b: "仰睡或趴睡" },
+    { cat: 'daily', q: "搭電梯按錯了", a: "直接出去再進來", b: "假裝沒事" },
+    { cat: 'daily', q: "計畫好的事突然取消", a: "鬆一口氣", b: "覺得有點失落" },
+    { cat: 'daily', q: "便利商店店員問你要不要袋子", a: "永遠自備袋", b: "看心情買" },
+    { cat: 'daily', q: "看到捷運博愛座空著", a: "還是去坐", b: "寧願站著" },
+    { cat: 'daily', q: "出門檢查東西的方式", a: "在腦中清單跑一遍", b: "用手摸口袋" },
+    { cat: 'daily', q: "洗衣服頻率", a: "湊一桶才洗", b: "每天/兩天洗一次" },
+    { cat: 'daily', q: "上廁所喜歡", a: "帶手機進去", b: "純解放不分心" },
+    { cat: 'daily', q: "冷氣溫度偏好", a: "23 度以下", b: "26 度以上" },
+    { cat: 'daily', q: "看時間", a: "看手機", b: "看手錶/牆上的鐘" },
+    { cat: 'daily', q: "鞋子穿脫", a: "鞋帶綁好的不解開硬塞", b: "好好解開再穿" },
+    { cat: 'daily', q: "桌面整理", a: "整齊乾淨派", b: "亂中有序派" },
+    { cat: 'daily', q: "聽到不熟的歌", a: "馬上 Shazam", b: "聽過就算了" },
+    { cat: 'daily', q: "拿到收據", a: "順手丟掉", b: "收著對發票" },
+    { cat: 'daily', q: "杯子用法", a: "一天就一個重複用", b: "喝什麼換什麼" },
+    { cat: 'daily', q: "切水果", a: "削皮的", b: "連皮吃的" },
+    { cat: 'daily', q: "飯後", a: "馬上洗碗", b: "等一下再洗" },
+    { cat: 'daily', q: "出門前照鏡子", a: "看好幾遍", b: "看一眼就走" },
+    { cat: 'daily', q: "看到地上零錢", a: "撿起來", b: "懶得彎腰" },
+    { cat: 'daily', q: "走樓梯/電梯", a: "能走樓梯就走", b: "永遠搭電梯" },
+    { cat: 'daily', q: "搭車滑手機", a: "會暈", b: "完全不會" },
+    { cat: 'daily', q: "點外送", a: "常常點", b: "盡量不點" },
+    { cat: 'daily', q: "領發票對中獎", a: "每期都對", b: "從來沒對過" },
+    { cat: 'daily', q: "看時鐘格式", a: "用 24 小時制", b: "用 12 小時制" },
+    { cat: 'daily', q: "通訊軟體", a: "已讀馬上回", b: "看心情" },
+    { cat: 'daily', q: "貼圖使用頻率", a: "每天用", b: "幾乎不用" },
+    { cat: 'daily', q: "看到很長的訊息", a: "認真讀完", b: "先掃過大概" },
+    { cat: 'daily', q: "睡前手機", a: "充電放遠一點", b: "放枕頭旁邊" },
+    { cat: 'daily', q: "下雨天", a: "覺得很有氣氛", b: "覺得很麻煩" },
+    { cat: 'daily', q: "一個人吃飯", a: "可以接受", b: "盡量找伴" },
+    { cat: 'daily', q: "看到喜歡的店打折", a: "馬上衝", b: "想一下再買" },
+    { cat: 'daily', q: "包包", a: "什麼都帶（求安心）", b: "越輕越好" },
+    { cat: 'daily', q: "新環境睡眠", a: "睡不好", b: "倒頭就睡" },
+    { cat: 'daily', q: "選衣服", a: "前一天決定好", b: "起床看心情" },
+    { cat: 'daily', q: "看影片字幕", a: "一定要開", b: "可以不開" },
+    { cat: 'daily', q: "聽到別人講悄悄話", a: "很想知道", b: "完全沒興趣" },
+    { cat: 'daily', q: "新買的東西", a: "馬上拆來用", b: "捨不得拆放著" },
+  
+    // ============ 情侶向 (50) ============
+    { cat: 'couple', q: "比較喜歡的約會", a: "在家一起耍廢", b: "出去走走" },
+    { cat: 'couple', q: "吵架後比較希望", a: "馬上談清楚", b: "先各自冷靜" },
+    { cat: 'couple', q: "紀念日比較想要", a: "驚喜安排", b: "一起討論做什麼" },
+    { cat: 'couple', q: "如果對方睡到一半磨牙", a: "輕輕推一下", b: "戴耳塞繼續睡" },
+    { cat: 'couple', q: "情人節想收到", a: "實用的禮物", b: "有心意的小物" },
+    { cat: 'couple', q: "一起追劇習慣", a: "一定要等對方", b: "誰先睡誰先看" },
+    { cat: 'couple', q: "比較在意對方", a: "記得重要日子", b: "每天說早安晚安" },
+    { cat: 'couple', q: "如果對方加班晚回家", a: "等他一起吃", b: "先自己吃" },
+    { cat: 'couple', q: "睡覺習慣", a: "抱著睡", b: "各睡各的不要互相干擾" },
+    { cat: 'couple', q: "吃飯時", a: "想吃對方碗裡的", b: "我的就是我的" },
+    { cat: 'couple', q: "出門牽手", a: "一直牽", b: "看情況" },
+    { cat: 'couple', q: "對方換新髮型/穿搭", a: "馬上發現", b: "對方提了才看到" },
+    { cat: 'couple', q: "看電影哭點", a: "我比較容易哭", b: "對方比較容易哭" },
+    { cat: 'couple', q: "如果意見不合", a: "據理力爭到底", b: "讓對方一步" },
+    { cat: 'couple', q: "對方生病時希望", a: "被照顧黏緊緊", b: "讓我自己靜靜" },
+    { cat: 'couple', q: "傳訊息頻率", a: "一整天都會聊", b: "重要的事再說" },
+    { cat: 'couple', q: "對方手機密碼", a: "知道", b: "不知道也不想知道" },
+    { cat: 'couple', q: "公開放閃", a: "OK 啊", b: "覺得有點不好意思" },
+    { cat: 'couple', q: "假日喜歡", a: "整天黏在一起", b: "各做各的也很好" },
+    { cat: 'couple', q: "對方生日", a: "提早一個月開始想", b: "前幾天才開始準備" },
+    { cat: 'couple', q: "如果只剩一個小時的電量", a: "傳給對方", b: "省著自己用" },
+    { cat: 'couple', q: "對方說「沒事」", a: "知道一定有事", b: "選擇相信" },
+    { cat: 'couple', q: "戀愛中比較像", a: "理性派", b: "感性派" },
+    { cat: 'couple', q: "拌嘴後", a: "等對方先低頭", b: "我先軟下來" },
+    { cat: 'couple', q: "聽到甜言蜜語", a: "覺得肉麻", b: "受用無比" },
+    { cat: 'couple', q: "對方加班/出差", a: "想念到不行", b: "正好享受獨處" },
+    { cat: 'couple', q: "情人吵架後的擁抱", a: "馬上抱抱和好", b: "等氣消了才願意抱" },
+    { cat: 'couple', q: "如果對方臨時要見前任", a: "說一聲就好", b: "希望被告知細節" },
+    { cat: 'couple', q: "結婚後想要", a: "兩人世界", b: "有小孩" },
+    { cat: 'couple', q: "理想的求婚", a: "盛大有儀式感", b: "私密兩人的" },
+    { cat: 'couple', q: "對方說「你決定就好」", a: "真的代表都可以", b: "其實有期待答案" },
+    { cat: 'couple', q: "重要決定希望", a: "兩人一起做", b: "尊重各自決定" },
+    { cat: 'couple', q: "見對方家人", a: "緊張到睡不著", b: "輕鬆面對" },
+    { cat: 'couple', q: "對方做家事", a: "希望主動分工", b: "我自己做比較放心" },
+    { cat: 'couple', q: "理財方式", a: "完全共有", b: "各自管自己的" },
+    { cat: 'couple', q: "希望對方先學會的", a: "煮飯", b: "修東西" },
+    { cat: 'couple', q: "如果對方忘了紀念日", a: "會很介意", b: "提醒一下就算了" },
+    { cat: 'couple', q: "情人節想要的活動", a: "好好吃一頓", b: "做平常不做的事" },
+    { cat: 'couple', q: "對方打呼", a: "睡得著", b: "很想踢他" },
+    { cat: 'couple', q: "兩人旅行", a: "我來規劃", b: "對方來規劃" },
+    { cat: 'couple', q: "出門前對方在化妝/打理", a: "耐心等", b: "想催他快一點" },
+    { cat: 'couple', q: "看到對方跟異性朋友很好", a: "完全 OK", b: "有點在意" },
+    { cat: 'couple', q: "如果只能選一樣", a: "對方每天記得早安晚安", b: "對方每年記得紀念日" },
+    { cat: 'couple', q: "兩人都很累時", a: "外食解決", b: "簡單煮個泡麵也好" },
+    { cat: 'couple', q: "睡前", a: "聊一下今天", b: "各看各的手機" },
+    { cat: 'couple', q: "理想伴侶的特質", a: "有趣幽默", b: "穩重可靠" },
+    { cat: 'couple', q: "看到對方哭", a: "馬上抱緊", b: "先讓他發洩" },
+    { cat: 'couple', q: "對方喜歡的東西我不懂", a: "努力學著一起喜歡", b: "保留各自的興趣" },
+    { cat: 'couple', q: "兩人最理想的家", a: "市區有很多店", b: "郊區安靜開闊" },
+    { cat: 'couple', q: "希望對方記得的細節", a: "我的喜好和忌口", b: "我講過的小故事" },
+  
+    // ============ 朋友向 (50) ============
+    { cat: 'friend', q: "聚餐時你通常是", a: "話多炒氣氛的", b: "聽別人講的" },
+    { cat: 'friend', q: "認識新朋友", a: "主動搭話", b: "等別人來" },
+    { cat: 'friend', q: "朋友臨時找你出門", a: "好啊立刻出發", b: "下次再約" },
+    { cat: 'friend', q: "比較討厭的朋友類型", a: "已讀不回的", b: "愛遲到的" },
+    { cat: 'friend', q: "群組裡通常是", a: "潛水派", b: "話多派" },
+    { cat: 'friend', q: "朋友推薦的東西", a: "馬上去試", b: "聽聽就好" },
+    { cat: 'friend', q: "壓力大的時候", a: "找人聊", b: "自己消化" },
+    { cat: 'friend', q: "朋友間記帳", a: "AA 制清清楚楚", b: "誰請誰沒差以後再說" },
+    { cat: 'friend', q: "朋友失戀找你", a: "陪他大哭一場", b: "理性分析給建議" },
+    { cat: 'friend', q: "朋友臨時取消約", a: "完全 OK", b: "有點不開心" },
+    { cat: 'friend', q: "好朋友的標準", a: "見面頻率高", b: "心靈距離近" },
+    { cat: 'friend', q: "朋友借錢", a: "二話不說借", b: "看金額和關係" },
+    { cat: 'friend', q: "朋友的另一半你不喜歡", a: "直接說", b: "默默觀察" },
+    { cat: 'friend', q: "比較喜歡的聚會", a: "大團體很熱鬧", b: "三五好友" },
+    { cat: 'friend', q: "朋友突然不聯絡", a: "主動關心", b: "尊重對方節奏" },
+    { cat: 'friend', q: "朋友炫耀新東西", a: "真心稱讚", b: "點頭微笑" },
+    { cat: 'friend', q: "好久不見的朋友", a: "覺得有距離", b: "馬上熱絡起來" },
+    { cat: 'friend', q: "朋友傳長語音訊息", a: "認真聽完", b: "請他打字" },
+    { cat: 'friend', q: "看到朋友吵架", a: "出來勸和", b: "保持中立" },
+    { cat: 'friend', q: "朋友請吃飯", a: "下次回請", b: "謝謝就好" },
+    { cat: 'friend', q: "朋友拍照拍到自己", a: "讓對方發", b: "希望先給我看" },
+    { cat: 'friend', q: "在朋友家過夜", a: "完全自在", b: "睡不好" },
+    { cat: 'friend', q: "聚會結束後", a: "意猶未盡想續攤", b: "想趕快回家充電" },
+    { cat: 'friend', q: "朋友的秘密", a: "守口如瓶", b: "看狀況講給很親的人" },
+    { cat: 'friend', q: "幫朋友撿便宜代購", a: "願意", b: "拒絕" },
+    { cat: 'friend', q: "朋友揪團", a: "幾乎都加入", b: "看內容決定" },
+    { cat: 'friend', q: "朋友離職", a: "為他開心", b: "捨不得" },
+    { cat: 'friend', q: "認識新朋友的方式", a: "透過共同朋友", b: "從興趣社團" },
+    { cat: 'friend', q: "傳訊息問朋友意見", a: "問完馬上需要回覆", b: "等對方有空" },
+    { cat: 'friend', q: "朋友吃飯前先拍照", a: "等他拍完", b: "我已經先吃了" },
+    { cat: 'friend', q: "朋友超會講冷笑話", a: "捧場大笑", b: "白眼一翻" },
+    { cat: 'friend', q: "看到朋友 IG 限動", a: "看完不一定回", b: "回應一下" },
+    { cat: 'friend', q: "朋友請你幫忙做事", a: "馬上答應", b: "看情況考慮" },
+    { cat: 'friend', q: "比較想要的朋友", a: "情緒穩定型", b: "歡樂搞笑型" },
+    { cat: 'friend', q: "聚會點餐", a: "我來決定", b: "別人決定就好" },
+    { cat: 'friend', q: "朋友吐槽你", a: "覺得很好笑", b: "心裡有點介意" },
+    { cat: 'friend', q: "朋友突然問你深層問題", a: "認真回答", b: "用玩笑話帶過" },
+    { cat: 'friend', q: "團體中你是", a: "點子王", b: "執行者" },
+    { cat: 'friend', q: "看朋友新照片", a: "用力按讚留言", b: "默默看完" },
+    { cat: 'friend', q: "朋友半夜傳訊息", a: "馬上回", b: "明天再說" },
+    { cat: 'friend', q: "朋友介紹相親/聯誼對象", a: "願意試試", b: "婉拒" },
+    { cat: 'friend', q: "看到朋友穿很怪", a: "直接吐槽", b: "不主動講" },
+    { cat: 'friend', q: "朋友的小孩", a: "很愛", b: "客氣保持距離" },
+    { cat: 'friend', q: "出去玩拍照", a: "想拍很多", b: "拍個一兩張就好" },
+    { cat: 'friend', q: "朋友醉了", a: "我來顧", b: "讓清醒的人顧" },
+    { cat: 'friend', q: "去 KTV", a: "搶麥唱到底", b: "點歌給別人唱" },
+    { cat: 'friend', q: "朋友推薦的店踩雷", a: "委婉說感想", b: "假裝沒事" },
+    { cat: 'friend', q: "聚會時手機", a: "幾乎不滑", b: "還是會偷看" },
+    { cat: 'friend', q: "朋友間的小禮物", a: "很重視儀式感", b: "心意到就好" },
+    { cat: 'friend', q: "認識多久才算朋友", a: "聊得來幾次就算", b: "要相處過挫折才算" },
+  
+    // ============ 深度問題 (110) ============
+    { cat: 'deep', q: "如果只能保留一個記憶", a: "最快樂的", b: "最深刻的" },
+    { cat: 'deep', q: "比較害怕", a: "被討厭", b: "被忽略" },
+    { cat: 'deep', q: "做決定時更重視", a: "理性分析", b: "直覺感受" },
+    { cat: 'deep', q: "比較難原諒", a: "說謊的人", b: "背叛的人" },
+    { cat: 'deep', q: "如果能回到過去", a: "改變一個決定", b: "什麼都不改" },
+    { cat: 'deep', q: "你覺得人生重要的是", a: "活得精彩", b: "活得安穩" },
+    { cat: 'deep', q: "比較想被別人說", a: "你好有趣", b: "你好可靠" },
+    { cat: 'deep', q: "面對未知比較想", a: "馬上探索", b: "先做好準備" },
+    { cat: 'deep', q: "後悔哪一種", a: "做了不該做的", b: "沒做想做的" },
+    { cat: 'deep', q: "如果能知道一件事", a: "自己的死期", b: "永遠不要知道" },
+    { cat: 'deep', q: "你覺得幸福是", a: "比別人好一點", b: "和自己比變好" },
+    { cat: 'deep', q: "比較怕的孤獨", a: "身邊沒人", b: "身邊有人卻無法理解" },
+    { cat: 'deep', q: "如果現在可以辭職一年", a: "去做想做的事", b: "其實不知道想做什麼" },
+    { cat: 'deep', q: "比較想要", a: "深刻而短暫的關係", b: "平淡而長久的關係" },
+    { cat: 'deep', q: "面對批評", a: "認真檢討", b: "先消化情緒再說" },
+    { cat: 'deep', q: "活著最重要的是", a: "被愛", b: "被理解" },
+    { cat: 'deep', q: "失敗了你會", a: "馬上再試", b: "先停下來想清楚" },
+    { cat: 'deep', q: "你相信", a: "命運", b: "選擇大於命運" },
+    { cat: 'deep', q: "最在意別人", a: "對我的評價", b: "對我做的事的評價" },
+    { cat: 'deep', q: "希望自己有的特質", a: "更勇敢", b: "更溫柔" },
+    { cat: 'deep', q: "面對死亡的態度", a: "怕，不想多想", b: "看開了" },
+    { cat: 'deep', q: "如果能跟過去的自己說一句話", a: "別擔心會好的", b: "趁早做某件事" },
+    { cat: 'deep', q: "比較羨慕", a: "有錢的人", b: "有時間的人" },
+    { cat: 'deep', q: "比較痛苦", a: "孤獨", b: "被困住" },
+    { cat: 'deep', q: "想要的是", a: "被看見", b: "默默被需要" },
+    { cat: 'deep', q: "面對問題", a: "正面迎擊", b: "繞過去再說" },
+    { cat: 'deep', q: "成功對你來說", a: "別人的肯定", b: "自己內心的平靜" },
+    { cat: 'deep', q: "讓你最有成就感的事", a: "完成困難的事", b: "幫助到別人" },
+    { cat: 'deep', q: "比較難過", a: "努力沒結果", b: "結果不是自己想要的" },
+    { cat: 'deep', q: "如果能改變一個個性", a: "別那麼在意別人", b: "別那麼苛責自己" },
+    { cat: 'deep', q: "最希望被", a: "崇拜", b: "依靠" },
+    { cat: 'deep', q: "面對改變", a: "擁抱它", b: "本能想抗拒" },
+    { cat: 'deep', q: "比較重要", a: "做自己愛的事", b: "做別人需要的事" },
+    { cat: 'deep', q: "最大的恐懼", a: "失去自由", b: "失去重要的人" },
+    { cat: 'deep', q: "怎樣才算長大", a: "能照顧好自己", b: "能照顧別人" },
+    { cat: 'deep', q: "你覺得時間是", a: "敵人", b: "朋友" },
+    { cat: 'deep', q: "如果能擁有", a: "完美的記憶力", b: "選擇性遺忘的能力" },
+    { cat: 'deep', q: "對你來說比較難受", a: "被誤解", b: "被遺忘" },
+    { cat: 'deep', q: "面對自己的弱點", a: "努力克服", b: "接受它共處" },
+    { cat: 'deep', q: "希望自己能", a: "影響很多人", b: "深深陪伴一個人" },
+    { cat: 'deep', q: "希望別人記得你是", a: "厲害的人", b: "溫暖的人" },
+    { cat: 'deep', q: "你心中的天堂", a: "和喜歡的人在一起", b: "做喜歡的事不被打擾" },
+    { cat: 'deep', q: "讓你撐下去的是", a: "未來的可能", b: "現在的責任" },
+    { cat: 'deep', q: "你比較相信", a: "人性本善", b: "人性看情況" },
+    { cat: 'deep', q: "理想的人生節奏", a: "充實忙碌", b: "從容緩慢" },
+    { cat: 'deep', q: "聽到讚美", a: "高興又有點懷疑", b: "坦然收下" },
+    { cat: 'deep', q: "最大的優點", a: "夠認真", b: "夠真實" },
+    { cat: 'deep', q: "感到迷惘時", a: "問別人意見", b: "自己一個人想" },
+    { cat: 'deep', q: "你覺得自由是", a: "想做什麼就做什麼", b: "不必勉強自己做什麼" },
+    { cat: 'deep', q: "活到一百歲", a: "好啊精彩", b: "不必，剛剛好就好" },
+
+    // 工作/職涯
+    { cat: 'deep', q: "對工作的期待", a: "穩定有保障", b: "一直挑戰新東西" },
+    { cat: 'deep', q: "選工作優先看", a: "薪水夠不夠", b: "做得開不開心" },
+    { cat: 'deep', q: "理想的職涯軌道", a: "在一個領域深耕到老", b: "中途轉行也沒關係" },
+    { cat: 'deep', q: "對成功的定義", a: "升到高位", b: "做出自己滿意的作品" },
+    { cat: 'deep', q: "覺得加班是", a: "可以接受的常態", b: "盡量避免" },
+    { cat: 'deep', q: "如果工作和興趣只能選一個當飯吃", a: "把興趣變工作", b: "工作歸工作、興趣歸興趣" },
+    { cat: 'deep', q: "工作上比較想要", a: "厲害的同事", b: "好相處的同事" },
+    { cat: 'deep', q: "如果有機會創業", a: "想試試看", b: "還是上班比較穩" },
+    { cat: 'deep', q: "上班最在意", a: "做的事有意義", b: "下班後的生活" },
+    { cat: 'deep', q: "對於跳槽", a: "兩三年動一次", b: "找到喜歡的就久待" },
+    { cat: 'deep', q: "工作壓力太大時", a: "硬撐過去", b: "趕快離開那個環境" },
+    { cat: 'deep', q: "選主管的話希望", a: "嚴格但會教你", b: "放手讓你自由發揮" },
+    { cat: 'deep', q: "比較想要的工作型態", a: "團隊合作熱鬧", b: "獨立作業自主" },
+    { cat: 'deep', q: "退休後想要的生活", a: "繼續做點什麼", b: "什麼都不做也很好" },
+    { cat: 'deep', q: "對待履歷上的空白期", a: "覺得需要解釋", b: "那段時間有它的意義" },
+
+    // 金錢觀
+    { cat: 'deep', q: "對金錢的態度", a: "存錢派，安全感重要", b: "享受當下，錢是拿來花的" },
+    { cat: 'deep', q: "拿到一筆獎金", a: "先存起來", b: "犒賞自己" },
+    { cat: 'deep', q: "如果月收入翻倍", a: "存款翻倍", b: "生活品質翻倍" },
+    { cat: 'deep', q: "比較值得花錢的", a: "體驗（旅行、課程）", b: "物品（買得到的東西）" },
+    { cat: 'deep', q: "看到喜歡的貴東西", a: "想很久再決定", b: "喜歡就買，省別的" },
+    { cat: 'deep', q: "對於借貸", a: "能不借就不借", b: "適當借錢沒問題" },
+    { cat: 'deep', q: "退休理財", a: "保守存款定存為主", b: "投資讓錢滾錢" },
+    { cat: 'deep', q: "對「窮」的看法", a: "比較沒安全感", b: "比較沒選擇" },
+    { cat: 'deep', q: "如果有 100 萬", a: "全部拿去投資", b: "全部留在身邊安心" },
+    { cat: 'deep', q: "對奢侈品的態度", a: "偶爾犒賞自己", b: "覺得沒必要" },
+    { cat: 'deep', q: "和朋友吃飯", a: "AA 制清楚", b: "輪流請比較有人情味" },
+    { cat: 'deep', q: "理想的退休金", a: "夠用就好", b: "越多越好越安心" },
+    { cat: 'deep', q: "比較會花錢在", a: "對自己好（吃喝玩樂）", b: "對未來好（投資進修）" },
+    { cat: 'deep', q: "看到便宜的東西", a: "馬上想搶", b: "想想用不用得到" },
+    { cat: 'deep', q: "如果只剩半年生命", a: "把錢花光", b: "留給重要的人" },
+
+    // 童年/原生家庭
+    { cat: 'deep', q: "回想童年比較多", a: "快樂的記憶", b: "想避開的記憶" },
+    { cat: 'deep', q: "童年時你比較像", a: "聽話的孩子", b: "有自己想法的孩子" },
+    { cat: 'deep', q: "家裡的氛圍小時候是", a: "熱鬧多話", b: "安靜各做各的" },
+    { cat: 'deep', q: "對父母的感覺", a: "親近能聊", b: "尊敬但有距離" },
+    { cat: 'deep', q: "比較像", a: "爸爸的個性", b: "媽媽的個性" },
+    { cat: 'deep', q: "從小被教導的是", a: "要努力上進", b: "要懂事體貼" },
+    { cat: 'deep', q: "童年最深的影響", a: "養成的習慣", b: "心裡的某個感受" },
+    { cat: 'deep', q: "和家人聊天頻率", a: "幾乎每天", b: "節日才聊" },
+    { cat: 'deep', q: "回家的感覺", a: "放鬆自在", b: "有點壓力" },
+    { cat: 'deep', q: "如果可以選童年重來", a: "希望重來一次", b: "不想重來" },
+    { cat: 'deep', q: "對父母的態度", a: "希望讓他們驕傲", b: "希望讓他們別擔心" },
+    { cat: 'deep', q: "從父母身上學到最多", a: "做事的方法", b: "做人的態度" },
+    { cat: 'deep', q: "原生家庭對你的影響", a: "讓我成為現在的自己", b: "有些部分想擺脫" },
+    { cat: 'deep', q: "對「家」的想像", a: "和原生家庭一樣", b: "完全不一樣" },
+    { cat: 'deep', q: "童年最想要的是", a: "更多陪伴", b: "更多自由" },
+
+    // 哲學思辨
+    { cat: 'deep', q: "電車難題：你會", a: "扳道讓 1 人死救 5 人", b: "什麼都不做" },
+    { cat: 'deep', q: "如果說謊能救人", a: "說謊", b: "說實話" },
+    { cat: 'deep', q: "比較相信", a: "結果決定一切", b: "過程比結果重要" },
+    { cat: 'deep', q: "做人比較重要的是", a: "對得起別人", b: "對得起自己" },
+    { cat: 'deep', q: "如果世界是場夢", a: "好好享受", b: "好想清醒" },
+    { cat: 'deep', q: "傳送機把你拆解後在另一邊重組，你會用嗎", a: "會，那還是我", b: "不會，那是複製人" },
+    { cat: 'deep', q: "對「自由意志」的看法", a: "我能真正選擇", b: "其實一切都是命定的" },
+    { cat: 'deep', q: "如果能永生", a: "好啊太棒了", b: "太可怕了" },
+    { cat: 'deep', q: "好人壞人的界線", a: "看行為", b: "看動機" },
+    { cat: 'deep', q: "如果可以讀別人的心", a: "想擁有", b: "不想知道" },
+    { cat: 'deep', q: "對「巧合」的看法", a: "純機率", b: "可能有意義" },
+    { cat: 'deep', q: "如果能無痛刪除一段壞記憶", a: "想刪", b: "壞記憶也是我的一部分" },
+    { cat: 'deep', q: "幫陌生人 vs 幫熟人", a: "兩個一樣重要", b: "當然熟人優先" },
+    { cat: 'deep', q: "對「死後世界」", a: "相信有", b: "覺得沒有" },
+    { cat: 'deep', q: "如果能讓一個人永遠快樂但失去自我", a: "讓他快樂", b: "保留他的自我" },
+
+    // ============ 無厘頭 (50) ============
+    { cat: 'funny', q: "比較想要的超能力", a: "會隱形", b: "會飛" },
+    { cat: 'funny', q: "如果中樂透 1000 萬", a: "馬上辭職", b: "繼續上班" },
+    { cat: 'funny', q: "比較怕的東西", a: "蟑螂", b: "蜘蛛" },
+    { cat: 'funny', q: "如果變成動物想當", a: "家裡的貓", b: "野外的鳥" },
+    { cat: 'funny', q: "末日來臨先做", a: "吃一頓大餐", b: "打電話給家人" },
+    { cat: 'funny', q: "比較想跟誰當朋友", a: "蜘蛛人", b: "鋼鐵人" },
+    { cat: 'funny', q: "穿越到古代想當", a: "皇帝", b: "隱士" },
+    { cat: 'funny', q: "如果世界只剩一首歌", a: "快歌", b: "慢歌" },
+    { cat: 'funny', q: "突然會講外星語", a: "去找外星人", b: "假裝沒事" },
+    { cat: 'funny', q: "如果可以選天氣", a: "永遠晴天", b: "永遠下雨天" },
+    { cat: 'funny', q: "撿到一盞神燈", a: "三個願望都用在自己", b: "至少留一個給別人" },
+    { cat: 'funny', q: "變透明一天會去", a: "偷聽八卦", b: "去博物館亂摸" },
+    { cat: 'funny', q: "如果只能吃一種食物", a: "拉麵", b: "炒飯" },
+    { cat: 'funny', q: "突然會講動物的話", a: "去跟貓聊天", b: "去跟魚聊天" },
+    { cat: 'funny', q: "在沙漠撿到一張床", a: "睡一下", b: "覺得很可疑" },
+    { cat: 'funny', q: "如果不用睡覺", a: "多出來的時間拿來玩", b: "多出來的時間拿來賺錢" },
+    { cat: 'funny', q: "可以選一個人代替你上班一天", a: "找朋友", b: "找個機器人" },
+    { cat: 'funny', q: "成為魔法師最想學的", a: "瞬間移動", b: "讓時間停下來" },
+    { cat: 'funny', q: "變超巨大能做的事", a: "踩房子", b: "去看雲" },
+    { cat: 'funny', q: "如果能變一種家具", a: "沙發", b: "床" },
+    { cat: 'funny', q: "突然失去重力 5 分鐘", a: "享受漂浮", b: "嚇到不敢動" },
+    { cat: 'funny', q: "如果只能用一個字溝通", a: "「啊」", b: "「嗯」" },
+    { cat: 'funny', q: "認真選一種末日", a: "殭屍末日", b: "AI 統治世界" },
+    { cat: 'funny', q: "變成水果想當", a: "西瓜", b: "草莓" },
+    { cat: 'funny', q: "可以跟一位歷史人物吃飯", a: "古代的", b: "近代的" },
+    { cat: 'funny', q: "在路上看到地上有 1000 元", a: "馬上撿", b: "看一下四周再撿" },
+    { cat: 'funny', q: "如果養一隻寵物恐龍", a: "暴龍", b: "迅猛龍" },
+    { cat: 'funny', q: "撿到一個會講話的鏡子", a: "每天問它", b: "塞到櫃子裡" },
+    { cat: 'funny', q: "如果只能說一句話一整天", a: "「謝謝」", b: "「沒事」" },
+    { cat: 'funny', q: "認真想想，比較想被甚麼追", a: "一群鴨子", b: "一隻火雞" },
+    { cat: 'funny', q: "可以選一個無用的技能", a: "舌頭碰到鼻子", b: "耳朵會動" },
+    { cat: 'funny', q: "變成一種樂器", a: "鋼琴", b: "吉他" },
+    { cat: 'funny', q: "如果能掌控別人的夢", a: "拿來惡作劇", b: "幫人做美夢" },
+    { cat: 'funny', q: "如果家裡突然多一個房間", a: "變遊戲室", b: "變超大衣帽間" },
+    { cat: 'funny', q: "養一隻會講話的鸚鵡", a: "教它罵人", b: "教它說情話" },
+    { cat: 'funny', q: "你比較想被當作", a: "天才", b: "怪人" },
+    { cat: 'funny', q: "如果突然會分身", a: "讓分身去上班", b: "讓分身做家事" },
+    { cat: 'funny', q: "想要哪種顏色的頭髮", a: "藍色", b: "粉紅色" },
+    { cat: 'funny', q: "變成一種飲料", a: "珍奶", b: "可樂" },
+    { cat: 'funny', q: "在無人島只能帶一樣", a: "打火機", b: "一本書" },
+    { cat: 'funny', q: "可以選一種童話結局", a: "灰姑娘", b: "睡美人" },
+    { cat: 'funny', q: "突然會煮飯", a: "開餐廳", b: "煮給自己吃就好" },
+    { cat: 'funny', q: "如果擁有一個機器人助理", a: "讓它做家事", b: "讓它陪我聊天" },
+    { cat: 'funny', q: "變成一棟建築", a: "燈塔", b: "圖書館" },
+    { cat: 'funny', q: "突然會通靈", a: "好奇想試", b: "立刻封印" },
+    { cat: 'funny', q: "想要一個任意門", a: "通到別的國家", b: "通到自己床上" },
+    { cat: 'funny', q: "如果能變一種昆蟲", a: "蝴蝶", b: "螢火蟲" },
+    { cat: 'funny', q: "把自己變成一道菜", a: "甜點", b: "鹹食" },
+    { cat: 'funny', q: "選一個地方住三個月", a: "森林小屋", b: "海邊小屋" },
+    { cat: 'funny', q: "比較想中的獎", a: "永遠的免費咖啡", b: "永遠的免費飲料" },
+  
+    // ============ 口味偏好 (50) ============
+    { cat: 'taste', q: "選一種口味", a: "辣", b: "酸" },
+    { cat: 'taste', q: "夜市必吃", a: "鹹酥雞", b: "珍珠奶茶" },
+    { cat: 'taste', q: "選一種寵物", a: "貓", b: "狗" },
+    { cat: 'taste', q: "比較想去", a: "海邊", b: "山上" },
+    { cat: 'taste', q: "比較會把錢花在", a: "吃的", b: "玩的" },
+    { cat: 'taste', q: "比較想學", a: "樂器", b: "外語" },
+    { cat: 'taste', q: "聽到歌會", a: "跟著哼", b: "安靜聽" },
+    { cat: 'taste', q: "禮物喜歡", a: "驚喜", b: "事先說好" },
+    { cat: 'taste', q: "吃飯速度", a: "很快", b: "很慢" },
+    { cat: 'taste', q: "比較討厭哪個", a: "下雨", b: "太熱" },
+    { cat: 'taste', q: "選一種季節", a: "春天", b: "秋天" },
+    { cat: 'taste', q: "拉麵選湯頭", a: "豚骨濃郁", b: "醬油清爽" },
+    { cat: 'taste', q: "喝咖啡", a: "黑咖啡", b: "加奶加糖" },
+    { cat: 'taste', q: "選一種米食", a: "白飯", b: "炒飯" },
+    { cat: 'taste', q: "麵 vs 飯", a: "麵", b: "飯" },
+    { cat: 'taste', q: "中式早餐", a: "豆漿油條", b: "蛋餅奶茶" },
+    { cat: 'taste', q: "甜點 vs 鹹食", a: "甜點", b: "鹹食" },
+    { cat: 'taste', q: "披薩配料", a: "夏威夷（鳳梨派）", b: "瑪格麗特（基本派）" },
+    { cat: 'taste', q: "牛排熟度", a: "三分", b: "七分以上" },
+    { cat: 'taste', q: "比較愛", a: "韓式", b: "日式" },
+    { cat: 'taste', q: "選一種飲料", a: "茶", b: "咖啡" },
+    { cat: 'taste', q: "選一種水果", a: "芒果", b: "草莓" },
+    { cat: 'taste', q: "選一種顏色", a: "黑白灰", b: "彩色繽紛" },
+    { cat: 'taste', q: "電影類型", a: "動作冒險", b: "劇情療癒" },
+    { cat: 'taste', q: "選音樂類型", a: "流行/抒情", b: "搖滾/獨立" },
+    { cat: 'taste', q: "出國想去", a: "歐洲", b: "亞洲" },
+    { cat: 'taste', q: "旅行方式", a: "事先排好行程", b: "走到哪算到哪" },
+    { cat: 'taste', q: "穿搭顏色", a: "深色系", b: "淺色系" },
+    { cat: 'taste', q: "選一種運動", a: "跑步/重訓", b: "瑜珈/伸展" },
+    { cat: 'taste', q: "聽 podcast", a: "知識類", b: "聊天類" },
+    { cat: 'taste', q: "看劇", a: "韓劇", b: "美劇" },
+    { cat: 'taste', q: "選一種味道", a: "蒜味", b: "蔥味" },
+    { cat: 'taste', q: "湯品", a: "酸辣湯", b: "玉米濃湯" },
+    { cat: 'taste', q: "宵夜", a: "鹹食", b: "甜食" },
+    { cat: 'taste', q: "吃火鍋湯底", a: "麻辣", b: "昆布/清湯" },
+    { cat: 'taste', q: "點手搖飲", a: "全糖正常冰", b: "微糖少冰" },
+    { cat: 'taste', q: "選一種堅果", a: "腰果", b: "杏仁" },
+    { cat: 'taste', q: "選一種起司", a: "濃郁味重", b: "清淡溫和" },
+    { cat: 'taste', q: "蛋的吃法", a: "全熟", b: "半熟流心" },
+    { cat: 'taste', q: "點心類", a: "巧克力", b: "餅乾" },
+    { cat: 'taste', q: "麵食", a: "湯麵", b: "乾麵" },
+    { cat: 'taste', q: "選一種裝飾風格", a: "極簡北歐", b: "復古溫暖" },
+    { cat: 'taste', q: "看書類型", a: "小說故事", b: "知識散文" },
+    { cat: 'taste', q: "看影片時長", a: "短影音", b: "長影片" },
+    { cat: 'taste', q: "週末早晨", a: "早起運動", b: "睡到自然醒" },
+    { cat: 'taste', q: "選一種花", a: "玫瑰", b: "向日葵" },
+    { cat: 'taste', q: "回家路上", a: "走熟悉的路", b: "偶爾繞不同條" },
+    { cat: 'taste', q: "選一種味覺體驗", a: "重口味", b: "清淡" },
+    { cat: 'taste', q: "聽歌時間", a: "通勤時", b: "睡前" },
+    { cat: 'taste', q: "選一種家飾", a: "植物盆栽", b: "畫作擺飾" }
+  ];
+
+  const DAILY_LIMIT = 5;
+
+  // ============ 狀態管理 ============
+  // ============ 房間機制 ============
+  let roomCode = null;
+  let unsubscribe = null;  // Firestore 訂閱取消函式
+
+  function loadRoom() {
+    try {
+      return localStorage.getItem('roomCode');
+    } catch { return null; }
+  }
+  function saveRoom(code) {
+    try { localStorage.setItem('roomCode', code); } catch {}
+    roomCode = code;
+  }
+  function clearRoom() {
+    try { localStorage.removeItem('roomCode'); } catch {}
+    roomCode = null;
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  }
+  let state = null;
+  let myRole = null; // 'A' or 'B'
+  let countdownInterval = null;  // 倒數計時器
+  let dailyCountdownInterval = null;  // 「下一批題目」每分鐘更新
+  let myRoundStartedQ = null;    // 我看到的是哪一題 (questionIdx)，避免重複觸發超時
+  let myRoundStartTime = null;   // 我看到這題的本機時間戳 (Date.now())，計算倒數用
+  let pendingAnswer = null;      // 答題畫面暫存：'a' | 'b'
+  let pendingGuess = null;       // 答題畫面暫存：'a' | 'b'
+  const messageDrafts = {};      // history item id -> textarea draft text
+  const ROUND_TIME_LIMIT = 20;   // 秒
+  let currentView = 'play'; // play | history | add | scores
+  let savedNamesCache = null;
+
+  // 從 localStorage 拿身分（跟房間綁定，不同房間身分獨立）
+  function loadRole() {
+    try {
+      if (!roomCode) return null;
+      return localStorage.getItem('role:' + roomCode);
+    } catch { return null; }
+  }
+  function saveRole(r) {
+    try {
+      if (roomCode) localStorage.setItem('role:' + roomCode, r);
+    } catch {}
+    myRole = r;
+  }
+  function clearRole() {
+    try {
+      if (roomCode) localStorage.removeItem('role:' + roomCode);
+    } catch {}
+    myRole = null;
+  }
+
+  // ============ 雲端資料 ============
+  // 結構：
+  // {
+  //   names: { A: "玩家A", B: "玩家B" },
+  //   customQuestions: [{ q, a, b, addedBy }],
+  //   usedIndices: [int],      // 已用過的題目 index（內建+自訂混合排序後）
+  //   currentRound: {
+  //     questionIdx: int,
+  //     question: {q, a, b},
+  //     A: { answer: 'a'|'b', guess: 'a'|'b' } | null,
+  //     B: { answer: 'a'|'b', guess: 'a'|'b' } | null,
+  //     revealed: boolean
+  //   } | null,
+  //   scores: { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} },
+  //   history: [ { question, A: {...}, B: {...}, date } ]
+  // }
+
+  async function loadState() {
+    if (!roomCode) return defaultState();
+    try {
+      const snap = await getDoc(doc(db, 'rooms', roomCode));
+      if (snap.exists()) {
+        return snap.data();
+      }
+    } catch (e) {
+      console.error('load failed', e);
+    }
+    return defaultState();
+  }
+
+  function defaultState() {
+    return {
+      names: { A: '玩家 A', B: '玩家 B' },
+      avatars: { A: '🐱', B: '🐶' },
+      customQuestions: [],
+      usedIndices: [],
+      currentRound: null,
+      scores: { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} },
+      history: [],
+      dailyProgress: { date: '', count: 0 },
+      claimedRoles: { A: false, B: false }
+    };
+  }
+
+  // 「遊戲日」設定：每天 21:00 切換到新的一天
+  const RESET_HOUR = 21;  // 24小時制，21:00 = 晚上 9 點
+
+  // 一次性 23:10 重置 cutoff：在此時間點之後、且尚未觸發過、就強制重置一次
+  // Date 用本機時區建構，台灣時間
+  // 這個窗口從「23:10」到「再過 24 小時」失效，避免未來無限觸發
+  const ONE_TIME_RESET_AT = new Date(2026, 5, 4, 23, 10, 0).getTime();  // 2026/6/4 23:10
+  const ONE_TIME_RESET_EXPIRES = ONE_TIME_RESET_AT + 24 * 60 * 60 * 1000;
+
+  // 取得「現在屬於哪個遊戲日」的 key
+  // 規則：21:00 之前 → 算前一日；21:00 之後 → 算今日
+  function todayKey() {
+    const now = new Date();
+    let dayStart;
+    if (now.getHours() < RESET_HOUR) {
+      // 還沒到 21:00 → 屬於昨天那個遊戲日
+      dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    } else {
+      // 已過 21:00 → 屬於今天這個遊戲日
+      dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+    return `${dayStart.getFullYear()}-${dayStart.getMonth()+1}-${dayStart.getDate()}`;
+  }
+
+  // 取得玩家頭像（兼容舊資料）
+  function getAvatar(role) {
+    if (state.avatars && state.avatars[role]) return state.avatars[role];
+    return role === 'A' ? '🐱' : '🐶';
+  }
+
+  function ensureDailyProgress() {
+    if (!state.dailyProgress) state.dailyProgress = { date: '', count: 0, plan: null, lastResetAt: 0 };
+    const today = todayKey();
+    const now = Date.now();
+
+    // 一次性 23:10 重置：今天過了 23:10、且這次重置還沒做過
+    const lastReset = state.dailyProgress.lastResetAt || 0;
+    const inOneTimeWindow = now >= ONE_TIME_RESET_AT && now < ONE_TIME_RESET_EXPIRES;
+    const needsOneTimeReset = inOneTimeWindow && lastReset < ONE_TIME_RESET_AT;
+
+    if (state.dailyProgress.date !== today || needsOneTimeReset) {
+      // 新的一天 or 一次性重置：生成今日抽題計畫
+      state.dailyProgress = {
+        date: today,
+        count: 0,
+        plan: shuffle(['deep', 'custom', 'random', 'random', 'random']),
+        lastResetAt: now
+      };
+    }
+    // 兼容舊資料（之前沒 plan 欄位）
+    if (!state.dailyProgress.plan) {
+      state.dailyProgress.plan = shuffle(['deep', 'custom', 'random', 'random', 'random']);
+    }
+  }
+
+  // Fisher-Yates 洗牌
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // 算到下一個「重置時間點」還剩多少時間，回傳「XX 小時 XX 分」格式
+  function timeUntilMidnight() {
+    const now = new Date();
+    let nextReset;
+    if (now.getHours() < RESET_HOUR) {
+      // 還沒到今天的 21:00
+      nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate(), RESET_HOUR, 0, 0);
+    } else {
+      // 已過 21:00 → 明天的 21:00
+      nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, RESET_HOUR, 0, 0);
+    }
+    const diffMs = nextReset - now;
+    const totalMinutes = Math.ceil(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours === 0) {
+      return `${minutes} 分`;
+    }
+    return `${hours} 小時 ${minutes} 分`;
+  }
+
+  function remainingToday() {
+    ensureDailyProgress();
+    return Math.max(0, DAILY_LIMIT - state.dailyProgress.count);
+  }
+
+  async function saveState() {
+    if (!roomCode) return;
+    try {
+      await setDoc(doc(db, 'rooms', roomCode), state);
+    } catch (e) {
+      console.error('save failed', e);
+    }
+  }
+
+  // ============ 題目池 ============
+  function getAllQuestions() {
+    return [
+      ...BUILTIN_QUESTIONS.map(q => ({...q, source: 'builtin'})),
+      ...state.customQuestions.map(q => ({...q, source: 'custom'}))
+    ];
+  }
+
+  // 依今日計畫選一題。如果計畫指定 custom 但題庫不夠，回傳 { needCustom: true }
+  function pickNewQuestion() {
+    ensureDailyProgress();
+    const slotType = state.dailyProgress.plan[state.dailyProgress.count] || 'random';
+
+    const all = getAllQuestions();
+
+    // 過濾出符合 slot 類型且還沒用過的
+    let pool;
+    if (slotType === 'deep') {
+      pool = all
+        .map((q, i) => ({q, i}))
+        .filter(x => x.q.cat === 'deep' && !state.usedIndices.includes(x.i));
+      if (pool.length === 0) {
+        // 深度題用完了 → 從深度題池子重置（只重置深度，不動其他類別）
+        const allDeepIndices = all
+          .map((q, i) => ({q, i}))
+          .filter(x => x.q.cat === 'deep')
+          .map(x => x.i);
+        state.usedIndices = state.usedIndices.filter(i => !allDeepIndices.includes(i));
+        pool = all
+          .map((q, i) => ({q, i}))
+          .filter(x => x.q.cat === 'deep' && !state.usedIndices.includes(x.i));
+      }
+    } else if (slotType === 'custom') {
+      pool = all
+        .map((q, i) => ({q, i}))
+        .filter(x => x.q.source === 'custom' && !state.usedIndices.includes(x.i));
+      if (pool.length === 0) {
+        // 自訂題不夠 → 回報給上層處理（提示使用者）
+        return { needCustom: true };
+      }
+    } else {
+      // random：從整個池子隨機（排除已用）
+      pool = all
+        .map((q, i) => ({q, i}))
+        .filter(x => !state.usedIndices.includes(x.i));
+      if (pool.length === 0) {
+        // 全部答過了，重設所有
+        state.usedIndices = [];
+        pool = all.map((q, i) => ({q, i}));
+      }
+    }
+
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    return { index: pick.i, question: pick.q };
+  }
+
+  async function startNewRound() {
+    // 先撈雲端最新版，避免覆蓋對方剛留言/改頭像/加題等
+    const fresh = await loadState();
+    state = fresh;
+
+    // 如果對方已經抽好新題了（rare race），就用對方那題不要覆蓋
+    if (state.currentRound) {
+      render();
+      return;
+    }
+
+    const picked = pickNewQuestion();
+
+    // 自訂題不夠 → 提示
+    if (picked.needCustom) {
+      alert('今天輪到自訂題了，但題庫不夠用 🥺\n去「加題」頁新增幾題吧！');
+      render();  // 不抽題、停在原畫面
+      return;
+    }
+
+    state.currentRound = {
+      questionIdx: picked.index,
+      question: {
+        q: picked.question.q,
+        a: picked.question.a,
+        b: picked.question.b,
+        cat: picked.question.cat || 'daily'
+      },
+      A: null,
+      B: null,
+      revealed: false,
+      startedAt: Date.now(),
+      timedOut: false,
+      ackedBy: { A: false, B: false }
+    };
+    state.usedIndices.push(picked.index);
+    await saveState();
+    render();
+  }
+
+  async function submitAnswer(answer, guess) {
+    if (!state.currentRound) return;
+
+    // 答完了 → 停止倒數、清掉自己這題的時間紀錄
+    stopCountdown();
+    myRoundStartedQ = null;
+    myRoundStartTime = null;
+
+    // 重要：在寫入前先從雲端撈最新狀態，避免覆蓋對方剛寫入的答案
+    const fresh = await loadState();
+    if (!fresh.currentRound) {
+      // 雲端的回合資料消失了（罕見），回退到本地
+      state.currentRound[myRole] = { answer, guess };
+    } else {
+      // 用雲端版本當基底，只把自己的答案塞進去
+      state = fresh;
+      state.currentRound[myRole] = { answer, guess };
+    }
+
+    // 兩人都答完 → 由本機執行揭曉
+    if (state.currentRound.A && state.currentRound.B && !state.currentRound.revealed) {
+      doReveal();
+    }
+
+    await saveState();
+    render();
+  }
+
+  // 揭曉 + 計分（只在 currentRound.revealed 還是 false 時才執行）
+  function doReveal() {
+    if (!state.currentRound || state.currentRound.revealed) return;
+    const A = state.currentRound.A;
+    const B = state.currentRound.B;
+    if (!A || !B) return;
+
+    state.currentRound.revealed = true;
+
+    if (A.guess === B.answer) state.scores.A.guess++;
+    if (B.guess === A.answer) state.scores.B.guess++;
+    if (A.answer === B.answer) {
+      state.scores.A.sync++;
+      state.scores.B.sync++;
+    }
+
+    state.history.unshift({
+      id: `h_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+      question: state.currentRound.question,
+      A: { ...A },
+      B: { ...B },
+      date: new Date().toISOString(),
+      messages: [],          // { by: 'A'|'B', text: string, at: ISO }
+      wantDiscuss: { A: false, B: false }
+    });
+    state.history = state.history.slice(0, 100);
+
+    ensureDailyProgress();
+    state.dailyProgress.count++;
+  }
+
+  // 揭曉後使用者按「下一題」：標記自己看完、兩人都看完才清掉 currentRound
+  async function ackAndAdvance() {
+    // 先撈雲端最新狀態
+    const fresh = await loadState();
+    if (!fresh.currentRound || !fresh.currentRound.revealed) {
+      // 雲端狀態異常，回退處理
+      state = fresh;
+      render();
+      return;
+    }
+
+    state = fresh;
+    if (!state.currentRound.ackedBy) state.currentRound.ackedBy = { A: false, B: false };
+    state.currentRound.ackedBy[myRole] = true;
+
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    if (state.currentRound.ackedBy[otherRole]) {
+      // 雙方都看過了 → 清掉這題
+      state.currentRound = null;
+    }
+
+    await saveState();
+    render();
+  }
+
+  // ============ 渲染 ============
+  function el(tag, attrs = {}, children = []) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') e.className = v;
+      else if (k === 'onclick') e.onclick = v;
+      else if (k === 'oninput') e.oninput = v;
+      else if (k === 'onchange') e.onchange = v;
+      else if (k === 'html') e.innerHTML = v;
+      else e.setAttribute(k, v);
+    }
+    if (typeof children === 'string') e.textContent = children;
+    else children.forEach(c => c && e.appendChild(c));
+    return e;
+  }
+
+  function render() {
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+
+    // 還沒選房間 → 顯示房間選擇畫面
+    if (!roomCode) {
+      app.appendChild(renderRoomPick());
+      return;
+    }
+
+    // 如果還沒選身分
+    if (!myRole) {
+      app.appendChild(renderWhoPick());
+      return;
+    }
+
+    app.appendChild(renderHeader());
+    app.appendChild(renderNav());
+
+    if (currentView === 'play') app.appendChild(renderPlay());
+    else if (currentView === 'scores') app.appendChild(renderScores());
+    else if (currentView === 'history') app.appendChild(renderHistory());
+    else if (currentView === 'review') app.appendChild(renderReview());
+    else if (currentView === 'add') app.appendChild(renderAdd());
+  }
+
+  function renderRoomPick() {
+    const wrap = el('div', { class: 'who-pick' });
+    wrap.appendChild(el('h2', {}, '默契猜猜'));
+    wrap.appendChild(el('p', {}, '輸入你們專屬的房間代碼'));
+
+    const input = el('input', {
+      class: 'input',
+      placeholder: '輸入代碼...',
+      style: 'font-size: 16px; padding: 14px; text-align: center; margin-top: 20px;'
+    });
+    wrap.appendChild(input);
+
+    const enterBtn = el('button', {
+      class: 'btn',
+      style: 'margin-top: 12px;',
+      onclick: async () => {
+        const code = input.value.trim().toLowerCase()
+          .replace(/[^a-z0-9_-]/g, '');  // 只留英數、底線、減號
+        if (!code) {
+          alert('請輸入房間代碼');
+          return;
+        }
+        if (code.length < 3) {
+          alert('代碼至少 3 個字');
+          return;
+        }
+        enterBtn.disabled = true;
+        enterBtn.textContent = '連線中...';
+        try {
+          await connectRoom(code);
+        } catch (e) {
+          console.error('connect failed', e);
+          alert('連線失敗：' + (e.message || '未知錯誤') + '\n\n請檢查網路或稍後再試。');
+          enterBtn.disabled = false;
+          enterBtn.textContent = '進入房間';
+        }
+      }
+    }, '進入房間');
+    wrap.appendChild(enterBtn);
+
+    const tip = el('div', { class: 'info-tip', style: 'margin-top: 30px; text-align: left;' });
+    tip.innerHTML = '💡 兩個人需要輸入<strong>同一個房間代碼</strong>才能一起玩。<br>第一個輸入的人會建立房間，之後對方輸入相同代碼就會進入同一個房間。<br><br>建議用只有你們兩個會想到的代碼（例如兩人名字組合），避免被陌生人猜到。';
+    wrap.appendChild(tip);
+
+    return wrap;
+  }
+
+  function renderWhoPick() {
+    const wrap = el('div', { class: 'who-pick' });
+    wrap.appendChild(el('h2', {}, '默契猜猜'));
+    wrap.appendChild(el('p', {}, '你是哪一位？'));
+
+    // 確保 claimedRoles 欄位存在（舊資料相容）
+    if (!state.claimedRoles) state.claimedRoles = { A: false, B: false };
+
+    // 判斷「救援模式」：兩個身分都被佔走 + 本機沒任何身分紀錄
+    // 表示這台手機之前是其中一方但本機紀錄掉了，讓使用者選回身分
+    const bothClaimed = state.claimedRoles.A && state.claimedRoles.B;
+    const noLocalRole = !loadRole();
+    const rescueMode = bothClaimed && noLocalRole;
+
+    if (rescueMode) {
+      const rescueNote = el('div', {
+        style: 'background: #fff5e6; border: 1px dashed #d4a84b; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; color: #8a6d1e; line-height: 1.6;'
+      });
+      rescueNote.innerHTML = '⚠️ 這台手機沒有身分紀錄，但房間已有兩個身分。<br>請選回你原本的身分（小心別跟對方搶到同一個）。';
+      wrap.appendChild(rescueNote);
+    }
+
+    const opts = el('div', { class: 'who-options' });
+
+    ['A', 'B'].forEach(role => {
+      const claimed = state.claimedRoles[role];
+      const disabled = claimed && !rescueMode;  // 救援模式下兩個都可選
+
+      const btn = el('button', {
+        class: `who-option ${role.toLowerCase()}`,
+        style: disabled ? 'opacity: 0.35; cursor: not-allowed;' : '',
+        onclick: async () => {
+          if (disabled) return;
+          // 再次從雲端撈最新狀態，防止對方剛好同時搶
+          const fresh = await loadState();
+          if (!fresh.claimedRoles) fresh.claimedRoles = { A: false, B: false };
+
+          // 救援模式下允許「重新領回」自己原本的身分
+          if (!rescueMode && fresh.claimedRoles[role]) {
+            alert(`${getAvatar(role)} ${state.names[role]} 已經被對方選走了，請選另一個`);
+            state = fresh;
+            render();
+            return;
+          }
+
+          state = fresh;
+          state.claimedRoles[role] = true;
+          await saveState();
+          saveRole(role);
+          render();
+        }
+      }, disabled ? `${getAvatar(role)} ${state.names[role]}（已被對方選走）` : `${getAvatar(role)} ${state.names[role]}`);
+      opts.appendChild(btn);
+    });
+
+    wrap.appendChild(opts);
+
+    const tip = el('div', { class: 'info-tip', style: 'margin-top: 30px; text-align: left;' });
+    tip.innerHTML = `💡 兩個人在房間「<strong>${escapeHtml(roomCode)}</strong>」裡，分別選玩家 A 和玩家 B。<br>第一次玩可以稍後在右上角點名字改成自己的暱稱。`;
+    wrap.appendChild(tip);
+
+    // 離開房間的小按鈕
+    const leave = el('button', {
+      class: 'swap-btn',
+      style: 'display: block; margin: 20px auto 0;',
+      onclick: async () => {
+        if (await customConfirm('離開這個房間？')) {
+          clearRoom();
+          render();
+        }
+      }
+    }, '離開房間');
+    wrap.appendChild(leave);
+
+    return wrap;
+  }
+
+  function renderHeader() {
+    const h = el('div', { class: 'header' });
+
+    // 左邊：標題 + 房間代碼 + 對方的小資訊
+    const left = el('div', { style: 'display: flex; flex-direction: column; gap: 2px;' });
+    left.appendChild(el('div', { class: 'title' }, '默契猜猜'));
+
+    const subRow = el('div', { style: 'display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted);' });
+    subRow.appendChild(el('span', {}, `房間：${roomCode}`));
+
+    // 對方資訊（只在已選身分、雙方都在房間時顯示）
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    const otherClaimed = state.claimedRoles && state.claimedRoles[otherRole];
+    if (otherClaimed) {
+      subRow.appendChild(el('span', { style: 'opacity: 0.4;' }, '·'));
+      subRow.appendChild(el('span', {
+        style: `display: inline-flex; align-items: center; gap: 3px; color: var(--accent-${otherRole.toLowerCase()}); font-weight: 600;`
+      }));
+      subRow.lastChild.innerHTML = `${getAvatar(otherRole)} ${escapeHtml(state.names[otherRole])}`;
+    } else {
+      subRow.appendChild(el('span', { style: 'opacity: 0.4;' }, '·'));
+      subRow.appendChild(el('span', { style: 'color: var(--muted); font-style: italic;' }, '等對方加入'));
+    }
+
+    left.appendChild(subRow);
+    h.appendChild(left);
+
+    // 右邊：身分 badge + 選單按鈕
+    const right = el('div', { style: 'display: flex; align-items: center; gap: 8px;' });
+
+    const badge = el('div', {
+      class: `who-badge who-${myRole.toLowerCase()}`,
+      style: 'display: flex; align-items: center; gap: 4px;'
+    });
+    badge.appendChild(el('span', { style: 'font-size: 14px;' }, getAvatar(myRole)));
+    badge.appendChild(el('span', {}, state.names[myRole]));
+    badge.style.cursor = 'pointer';
+    badge.onclick = async () => {
+      const newName = prompt('改個名字吧（例如你的暱稱）', state.names[myRole]);
+      if (newName && newName.trim()) {
+        // 先撈雲端最新版，避免覆蓋對方剛改的資料
+        const fresh = await loadState();
+        state = fresh;
+        state.names[myRole] = newName.trim().slice(0, 10);
+        await saveState();
+        render();
+      }
+    };
+    right.appendChild(badge);
+
+    // 選單按鈕（三個點）
+    const menuBtn = el('button', {
+      style: 'background: none; border: none; padding: 6px 8px; cursor: pointer; font-size: 18px; color: var(--ink); line-height: 1; border-radius: 6px;',
+      'aria-label': '選單',
+      onclick: (e) => {
+        e.stopPropagation();
+        toggleMenu(menuBtn);
+      }
+    }, '⋯');
+    right.appendChild(menuBtn);
+
+    h.appendChild(right);
+    return h;
+  }
+
+  // 浮出選單
+  function toggleMenu(anchor) {
+    // 如果已開啟,關掉
+    const existing = document.getElementById('floating-menu');
+    if (existing) { existing.remove(); return; }
+
+    const menu = el('div', {
+      id: 'floating-menu',
+      style: 'position: absolute; right: 16px; top: 60px; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); padding: 6px; z-index: 100; min-width: 160px;'
+    });
+
+    const makeItem = (label, onclick, danger = false) => el('button', {
+      style: `display: block; width: 100%; text-align: left; padding: 10px 12px; border: none; background: none; font-family: inherit; font-size: 14px; color: ${danger ? '#c54545' : 'var(--ink)'}; cursor: pointer; border-radius: 8px;`,
+      onmouseover: function() { this.style.background = 'var(--bg)'; },
+      onmouseout: function() { this.style.background = 'none'; },
+      onclick: (e) => {
+        e.stopPropagation();
+        menu.remove();
+        onclick();
+      }
+    }, label);
+
+    menu.appendChild(makeItem('改名字', async () => {
+      const newName = prompt('改個名字吧', state.names[myRole]);
+      if (newName && newName.trim()) {
+        const fresh = await loadState();
+        state = fresh;
+        state.names[myRole] = newName.trim().slice(0, 10);
+        await saveState();
+        render();
+      }
+    }));
+
+    menu.appendChild(makeItem('改頭像', () => {
+      showEmojiPicker();
+    }));
+
+    menu.appendChild(makeItem('切換身分', async () => {
+      if (await customConfirm('換成另一個身分嗎？這會把目前身分釋放給對方。')) {
+        const fresh = await loadState();
+        state = fresh;
+        if (state.claimedRoles && myRole) {
+          state.claimedRoles[myRole] = false;
+          await saveState();
+        }
+        clearRole();
+        render();
+      }
+    }));
+
+    menu.appendChild(makeItem('離開房間', async () => {
+      if (await customConfirm('離開房間？資料還會留在雲端，下次輸入同樣代碼就能回來，身分也會自動沿用。')) {
+        clearRoom();
+        render();
+      }
+    }, true));
+
+    document.body.appendChild(menu);
+
+    // 點外面關閉
+    setTimeout(() => {
+      const closeHandler = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener('click', closeHandler);
+        }
+      };
+      document.addEventListener('click', closeHandler);
+    }, 0);
+  }
+
+  // Emoji 頭像選擇器（模態視窗）
+  // 自訂確認對話框（取代 native confirm，避免 PWA 模式下 confirm 失效）
+  function customConfirm(message, opts = {}) {
+    return new Promise((resolve) => {
+      // 清掉舊的
+      const old = document.getElementById('confirm-modal');
+      if (old) old.remove();
+
+      const overlay = el('div', {
+        id: 'confirm-modal',
+        style: 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 24px;'
+      });
+
+      const modal = el('div', {
+        style: 'background: white; border-radius: 18px; padding: 22px; max-width: 340px; width: 100%;'
+      });
+
+      const msg = el('div', {
+        style: 'font-size: 15px; line-height: 1.6; margin-bottom: 18px; color: var(--ink); white-space: pre-wrap;'
+      }, message);
+      modal.appendChild(msg);
+
+      const btnRow = el('div', { style: 'display: flex; gap: 8px;' });
+
+      const cancelBtn = el('button', {
+        class: 'btn btn-ghost',
+        style: 'flex: 1; margin: 0;',
+        onclick: () => { overlay.remove(); resolve(false); }
+      }, opts.cancelText || '取消');
+
+      const okBtn = el('button', {
+        class: 'btn',
+        style: `flex: 1; margin: 0; ${opts.danger ? 'background: #c54545;' : ''}`,
+        onclick: () => { overlay.remove(); resolve(true); }
+      }, opts.okText || '確定');
+
+      btnRow.appendChild(cancelBtn);
+      btnRow.appendChild(okBtn);
+      modal.appendChild(btnRow);
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+    });
+  }
+
+  function showEmojiPicker() {
+    // 移除舊的
+    const existing = document.getElementById('emoji-modal');
+    if (existing) existing.remove();
+
+    const emojis = [
+      '🍑', '🍓', '🍋', '🍒', '🍇', '🍉',
+      '🌿', '🌸', '🌷', '🌻', '🌙', '⭐',
+      '🐱', '🐶', '🦊', '🐻', '🐰', '🐼',
+      '🐨', '🐹', '🐸', '🐧', '🦄', '🐝',
+      '☕', '🧋', '🍵', '🍪', '🍩', '🍰'
+    ];
+
+    const overlay = el('div', {
+      id: 'emoji-modal',
+      style: 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;',
+      onclick: function(e) {
+        if (e.target === this) this.remove();
+      }
+    });
+
+    const modal = el('div', {
+      style: 'background: white; border-radius: 18px; padding: 20px; max-width: 360px; width: 100%; max-height: 80vh; overflow-y: auto;',
+      onclick: (e) => e.stopPropagation()
+    });
+
+    const title = el('div', {
+      style: 'font-size: 16px; font-weight: 700; margin-bottom: 4px;'
+    }, '挑一個頭像');
+    modal.appendChild(title);
+
+    const sub = el('div', {
+      style: 'font-size: 12px; color: var(--muted); margin-bottom: 16px;'
+    }, '選一個 emoji 代表你');
+    modal.appendChild(sub);
+
+    let chosen = getAvatar(myRole);
+
+    const grid = el('div', {
+      style: 'display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px;'
+    });
+
+    function renderTiles() {
+      grid.innerHTML = '';
+      emojis.forEach(emoji => {
+        const tile = el('div', {
+          style: `aspect-ratio: 1; border: 2px solid ${emoji === chosen ? 'var(--accent-a)' : 'var(--line)'}; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; background: ${emoji === chosen ? 'var(--soft-a)' : 'white'};`,
+          onclick: () => {
+            chosen = emoji;
+            customInput.value = '';
+            renderTiles();
+          }
+        }, emoji);
+        grid.appendChild(tile);
+      });
+    }
+    renderTiles();
+    modal.appendChild(grid);
+
+    const customLabel = el('div', {
+      style: 'font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px;'
+    }, '或自訂（貼上任意 emoji）');
+    modal.appendChild(customLabel);
+
+    const customInput = el('input', {
+      class: 'input',
+      style: 'width: 100%; text-align: center; font-size: 22px; padding: 10px; margin-bottom: 16px;',
+      placeholder: '✨',
+      maxlength: '20',
+      oninput: function() {
+        const v = this.value.trim();
+        if (v) {
+          chosen = v;
+          renderTiles();
+        }
+      }
+    });
+    modal.appendChild(customInput);
+
+    const btnRow = el('div', { style: 'display: flex; gap: 8px;' });
+    const cancelBtn = el('button', {
+      class: 'btn btn-ghost',
+      style: 'flex: 1; margin: 0;',
+      onclick: () => overlay.remove()
+    }, '取消');
+    const saveBtn = el('button', {
+      class: 'btn',
+      style: 'flex: 1; margin: 0;',
+      onclick: async () => {
+        const fresh = await loadState();
+        state = fresh;
+        if (!state.avatars) state.avatars = { A: '🐱', B: '🐶' };
+        state.avatars[myRole] = chosen;
+        await saveState();
+        overlay.remove();
+        render();
+      }
+    }, '儲存');
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(saveBtn);
+    modal.appendChild(btnRow);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  }
+
+  function renderNav() {
+    const nav = el('div', { class: 'nav' });
+    const items = [
+      ['play', '今日'],
+      ['scores', '分數'],
+      ['history', '紀錄'],
+      ['review', '回顧'],
+      ['add', '加題']
+    ];
+    items.forEach(([k, label]) => {
+      const b = el('button', {
+        class: currentView === k ? 'active' : '',
+        onclick: () => { currentView = k; render(); }
+      }, label);
+      nav.appendChild(b);
+    });
+    return nav;
+  }
+
+  function renderPlay() {
+    const wrap = el('div');
+
+    ensureDailyProgress();
+    const remaining = remainingToday();
+
+    // 沒有當前回合
+    if (!state.currentRound) {
+      // 今天額度用完
+      if (remaining === 0) {
+        startDailyCountdown();  // 啟動每分鐘更新
+        const card = el('div', { class: 'card', style: 'text-align: center; padding: 40px 20px;' });
+        card.appendChild(el('div', { style: 'font-size: 36px; margin-bottom: 10px;' }, '🌙'));
+        card.appendChild(el('div', { style: 'font-size: 16px; font-weight: 600; margin-bottom: 6px;' }, `今天的 ${DAILY_LIMIT} 題都答完囉`));
+        card.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted); margin-bottom: 14px;' }, '明天再來！'));
+
+        // 倒數到下一批題目
+        const countdown = el('div', {
+          style: 'background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: 10px 14px; display: inline-block;'
+        });
+        countdown.appendChild(el('div', {
+          style: 'font-size: 11px; color: var(--muted); letter-spacing: 0.8px; margin-bottom: 4px;'
+        }, '距離下一批題目'));
+        countdown.appendChild(el('div', {
+          style: 'font-size: 15px; font-weight: 700; color: var(--accent-a);'
+        }, `⏳ ${timeUntilMidnight()}`));
+        card.appendChild(countdown);
+
+        wrap.appendChild(card);
+
+        // 也顯示今天答了什麼
+        const todayHistory = state.history.filter(h => {
+          const d = new Date(h.date);
+          return todayKey() === `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+        });
+        if (todayHistory.length > 0) {
+          const sub = el('div', { class: 'card' });
+          sub.appendChild(el('div', { class: 'label' }, '今日回顧'));
+          todayHistory.forEach(item => {
+            const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+            const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+            row.innerHTML = `<span style="display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 6px; background: ${catInfo.bg}; color: ${catInfo.color}; margin-right: 6px; font-weight: 600;">${catInfo.name}</span><span>${escapeHtml(item.question.q)}</span>`;
+            sub.appendChild(row);
+          });
+          // 拿掉最後一條 border
+          if (sub.lastChild) sub.lastChild.style.borderBottom = 'none';
+          wrap.appendChild(sub);
+        }
+        return wrap;
+      }
+
+      const card = el('div', { class: 'card', style: 'text-align: center; padding: 40px 20px;' });
+      card.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted); margin-bottom: 4px;' },
+        `今天還有 ${remaining} 題`));
+      card.appendChild(el('div', { style: 'font-size: 14px; margin-bottom: 16px;' },
+        remaining === DAILY_LIMIT ? '開始今天的默契挑戰' : '繼續下一題'));
+
+      // 預先檢查：下一題如果是自訂題但題庫不夠，先警告
+      const nextSlot = state.dailyProgress.plan && state.dailyProgress.plan[state.dailyProgress.count];
+      const allQs = getAllQuestions();
+      const availableCustom = allQs
+        .map((q, i) => ({q, i}))
+        .filter(x => x.q.source === 'custom' && !state.usedIndices.includes(x.i));
+
+      if (nextSlot === 'custom' && availableCustom.length === 0) {
+        const warn = el('div', {
+          style: 'background: #fff5e6; border: 1px dashed var(--gold); border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 13px; color: #8a6d1e; line-height: 1.6;'
+        });
+        warn.innerHTML = '⚠️ 今天輪到自訂題了，但題庫不夠用 🥺<br>去「加題」頁新增幾題吧！';
+        card.appendChild(warn);
+
+        const goAddBtn = el('button', {
+          class: 'btn',
+          onclick: () => { currentView = 'add'; render(); }
+        }, '去加題');
+        card.appendChild(goAddBtn);
+      } else {
+        const btn = el('button', { class: 'btn', onclick: startNewRound }, '抽一題來玩');
+        card.appendChild(btn);
+      }
+
+      wrap.appendChild(card);
+      return wrap;
+    }
+
+    const round = state.currentRound;
+    const myData = round[myRole];
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    const otherData = round[otherRole];
+
+    // 超時 → 雙方都顯示通知並等對方按了解
+    if (round.timedOut) {
+      stopCountdown();
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      if (!round.timeoutAckedBy) round.timeoutAckedBy = { A: false, B: false };
+      const iAcked = round.timeoutAckedBy[myRole];
+      const otherAcked = round.timeoutAckedBy[otherRole];
+
+      const timeoutCard = el('div', { class: 'card', style: 'text-align: center; padding: 30px 20px;' });
+      timeoutCard.appendChild(el('div', { style: 'font-size: 36px; margin-bottom: 10px;' }, '⏱️'));
+
+      const whoTimedOut = round.timedOutBy;
+      const isMe = whoTimedOut === myRole;
+      timeoutCard.appendChild(el('div', { style: 'font-size: 15px; font-weight: 600; margin-bottom: 6px;' },
+        isMe ? '時間到了！' : `${getAvatar(whoTimedOut)} ${state.names[whoTimedOut]} 超時了`));
+      timeoutCard.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted); margin-bottom: 16px;' },
+        '這題作廢，不算今日進度'));
+
+      if (iAcked && !otherAcked) {
+        timeoutCard.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted);' },
+          `等 ${getAvatar(otherRole)} ${state.names[otherRole]} 看完…`));
+      } else {
+        const btn = el('button', {
+          class: 'btn',
+          onclick: async () => {
+            const fresh = await loadState();
+            if (!fresh.currentRound) {
+              state = fresh;
+              render();
+              return;
+            }
+            if (!fresh.currentRound.timeoutAckedBy) fresh.currentRound.timeoutAckedBy = { A: false, B: false };
+            fresh.currentRound.timeoutAckedBy[myRole] = true;
+            // 兩人都看過 → 清掉這回合
+            if (fresh.currentRound.timeoutAckedBy[otherRole]) {
+              fresh.currentRound = null;
+            }
+            state = fresh;
+            await saveState();
+            render();
+          }
+        }, '了解');
+        timeoutCard.appendChild(btn);
+      }
+      wrap.appendChild(timeoutCard);
+      return wrap;
+    }
+
+    // 已揭曉 → 顯示結果
+    if (round.revealed) {
+      stopCountdown();
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      wrap.appendChild(renderReveal(round));
+
+      // 確保 ackedBy 存在
+      if (!round.ackedBy) round.ackedBy = { A: false, B: false };
+      const iAcked = round.ackedBy[myRole];
+      const otherAcked = round.ackedBy[otherRole];
+
+      // 額度檢查：揭曉後若已滿 3，按鈕變成提示
+      const remainAfter = remainingToday();
+
+      if (iAcked && !otherAcked) {
+        // 我已經按過下一題，但對方還沒 → 等對方
+        const wait = el('div', { class: 'card', style: 'text-align: center; padding: 20px;' });
+        wait.appendChild(el('div', { style: 'font-size: 13px; color: var(--muted);' },
+          `等 ${getAvatar(otherRole)} ${state.names[otherRole]} 看完揭曉…`));
+        wrap.appendChild(wait);
+        return wrap;
+      }
+
+      if (remainAfter === 0) {
+        startDailyCountdown();
+        const done = el('div', { class: 'card', style: 'text-align: center; padding: 20px;' });
+        done.appendChild(el('div', { style: 'font-size: 24px; margin-bottom: 6px;' }, '🌙'));
+        done.appendChild(el('div', { style: 'font-size: 14px; font-weight: 600;' }, `今天的 ${DAILY_LIMIT} 題完成！`));
+        done.appendChild(el('div', { style: 'font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 12px;' }, '明天見～'));
+
+        const countdown = el('div', {
+          style: 'background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 14px; display: inline-block; margin-bottom: 4px;'
+        });
+        countdown.appendChild(el('div', {
+          style: 'font-size: 10px; color: var(--muted); letter-spacing: 0.8px; margin-bottom: 3px;'
+        }, '距離下一批題目'));
+        countdown.appendChild(el('div', {
+          style: 'font-size: 14px; font-weight: 700; color: var(--accent-a);'
+        }, `⏳ ${timeUntilMidnight()}`));
+        done.appendChild(countdown);
+
+        const clearBtn = el('button', {
+          class: 'btn btn-ghost',
+          style: 'margin-top: 12px;',
+          onclick: async () => {
+            await ackAndAdvance();
+          }
+        }, '關閉');
+        done.appendChild(clearBtn);
+        wrap.appendChild(done);
+      } else {
+        const btn = el('button', { class: 'btn', onclick: async () => {
+          await ackAndAdvance();
+        }}, `下一題（還剩 ${remainAfter} 題）`);
+        wrap.appendChild(btn);
+      }
+      return wrap;
+    }
+
+    // 我已答完，等對方
+    if (myData) {
+      stopCountdown();
+      const card = el('div', { class: 'card waiting' });
+      card.appendChild(el('div', { class: 'waiting-icon' }, '⏳'));
+      card.appendChild(el('div', { class: 'waiting-text' }, `等 ${getAvatar(otherRole)} ${state.names[otherRole]} 作答…`));
+      card.appendChild(el('div', { class: 'waiting-sub' }, '對方答完會自動揭曉'));
+      wrap.appendChild(card);
+
+      const refresh = el('button', {
+        class: 'btn btn-ghost',
+        onclick: async () => {
+          state = await loadState();
+          render();
+        }
+      }, '手動重新整理');
+      wrap.appendChild(refresh);
+
+      // 顯示我的答案
+      const myCard = el('div', { class: 'card', style: 'margin-top: 14px;' });
+      myCard.appendChild(el('div', { class: 'label' }, '你的選擇'));
+      myCard.appendChild(el('div', { style: 'font-size: 14px; margin-bottom: 6px;' },
+        `我選：${myData.answer === 'a' ? round.question.a : round.question.b}`));
+      myCard.appendChild(el('div', { style: 'font-size: 14px; color: var(--muted);' },
+        `猜對方：${myData.guess === 'a' ? round.question.a : round.question.b}`));
+      wrap.appendChild(myCard);
+
+      return wrap;
+    }
+
+    // 還沒答 → 答題介面
+    wrap.appendChild(renderAnswerForm(round));
+    return wrap;
+  }
+
+  function renderAnswerForm(round) {
+    const wrap = el('div');
+
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+
+    // 如果換到新題目，清掉暫存
+    if (myRoundStartedQ !== round.questionIdx) {
+      pendingAnswer = null;
+      pendingGuess = null;
+      myRoundStartTime = null;  // 讓下面 startCountdown 用新的開始時間
+    }
+
+    // 倒數條容器（放在最上面）
+    const timerWrap = el('div', {
+      style: 'margin-bottom: 14px;'
+    });
+    const timerLabel = el('div', {
+      style: 'display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px;'
+    });
+    const timerText = el('span', {}, `⏱️ 剩餘時間`);
+    const timerCount = el('span', { style: 'font-weight: 700; color: var(--ink);' }, `${ROUND_TIME_LIMIT}s`);
+    timerLabel.appendChild(timerText);
+    timerLabel.appendChild(timerCount);
+    timerWrap.appendChild(timerLabel);
+
+    const timerBar = el('div', {
+      style: 'height: 6px; background: var(--line); border-radius: 3px; overflow: hidden;'
+    });
+    const timerFill = el('div', {
+      style: 'height: 100%; width: 100%; background: var(--green); border-radius: 3px; transition: width 0.95s linear, background-color 0.3s;'
+    });
+    timerBar.appendChild(timerFill);
+    timerWrap.appendChild(timerBar);
+    wrap.appendChild(timerWrap);
+
+    // 題目卡
+    const qCard = el('div', { class: 'card' });
+    const catInfo = CATEGORIES[round.question.cat] || CATEGORIES.daily;
+    const catRow = el('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;' });
+    const catTag = el('span', {
+      style: `font-size: 11px; padding: 3px 10px; border-radius: 10px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600; letter-spacing: 0.5px;`
+    }, catInfo.name);
+    catRow.appendChild(catTag);
+    catRow.appendChild(el('span', {
+      style: 'font-size: 11px; color: var(--muted); letter-spacing: 0.8px;'
+    }, `第 ${state.dailyProgress.count + 1} / ${DAILY_LIMIT} 題`));
+    qCard.appendChild(catRow);
+    qCard.appendChild(el('div', { class: 'question' }, round.question.q));
+    wrap.appendChild(qCard);
+
+    // Step 1: 自己的答案
+    const step1 = el('div', { class: 'card' });
+    step1.appendChild(el('div', { class: 'label' }, `1. 你自己會選？`));
+
+    const opts1 = el('div', { class: 'options' });
+    ['a', 'b'].forEach(key => {
+      const btn = el('button', {
+        class: 'option' + (pendingAnswer === key ? ' selected' : ''),
+        onclick: () => {
+          pendingAnswer = key;
+          opts1.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          btn.classList.add('selected');
+          updateSubmit();
+        }
+      }, round.question[key]);
+      opts1.appendChild(btn);
+    });
+    step1.appendChild(opts1);
+    wrap.appendChild(step1);
+
+    // Step 2: 猜對方
+    const step2 = el('div', { class: 'card' });
+    step2.appendChild(el('div', { class: 'label' }, `2. 猜 ${getAvatar(otherRole)} ${state.names[otherRole]} 會選？`));
+
+    const opts2 = el('div', { class: 'options' });
+    ['a', 'b'].forEach(key => {
+      const btn = el('button', {
+        class: 'option' + (pendingGuess === key ? ' selected' : ''),
+        onclick: () => {
+          pendingGuess = key;
+          opts2.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          btn.classList.add('selected');
+          updateSubmit();
+        }
+      }, round.question[key]);
+      opts2.appendChild(btn);
+    });
+    step2.appendChild(opts2);
+    wrap.appendChild(step2);
+
+    const submitBtn = el('button', {
+      class: 'btn',
+      onclick: () => {
+        if (!pendingAnswer || !pendingGuess) return;
+        stopCountdown();
+        const a = pendingAnswer, g = pendingGuess;
+        pendingAnswer = null;
+        pendingGuess = null;
+        submitAnswer(a, g);
+      }
+    }, '送出');
+    if (!pendingAnswer || !pendingGuess) {
+      submitBtn.setAttribute('disabled', 'true');
+    }
+    wrap.appendChild(submitBtn);
+
+    function updateSubmit() {
+      if (pendingAnswer && pendingGuess) {
+        submitBtn.removeAttribute('disabled');
+      } else {
+        submitBtn.setAttribute('disabled', 'true');
+      }
+    }
+
+    // 啟動倒數（用真實時間扣，不會被 re-render 重置）
+    if (myRoundStartedQ !== round.questionIdx) {
+      myRoundStartedQ = round.questionIdx;
+      myRoundStartTime = Date.now();
+    }
+    startCountdown(timerFill, timerCount);
+
+    return wrap;
+  }
+
+  function stopCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
+  // 每分鐘更新一次「距離下一批題目」倒數
+  function startDailyCountdown() {
+    if (dailyCountdownInterval) return;  // 已經在跑就不重複啟動
+    dailyCountdownInterval = setInterval(() => {
+      // 如果切到別的畫面（不是「今日且額度用完」），停掉
+      if (currentView !== 'play') {
+        stopDailyCountdown();
+        return;
+      }
+      ensureDailyProgress();
+      if (remainingToday() > 0) {
+        // 午夜過了、額度重置 → 停掉倒數、重新渲染
+        stopDailyCountdown();
+        render();
+        return;
+      }
+      // 還是答完的狀態 → 更新倒數
+      render();
+    }, 60000);  // 每分鐘更新
+  }
+
+  function stopDailyCountdown() {
+    if (dailyCountdownInterval) {
+      clearInterval(dailyCountdownInterval);
+      dailyCountdownInterval = null;
+    }
+  }
+
+  function startCountdown(fillEl, textEl) {
+    stopCountdown();
+    if (!myRoundStartTime) myRoundStartTime = Date.now();
+
+    function tick() {
+      const elapsed = (Date.now() - myRoundStartTime) / 1000;
+      const seconds = Math.max(0, Math.ceil(ROUND_TIME_LIMIT - elapsed));
+      const pct = (seconds / ROUND_TIME_LIMIT) * 100;
+      fillEl.style.width = pct + '%';
+      if (seconds > 10) {
+        fillEl.style.background = 'var(--green)';
+      } else if (seconds > 5) {
+        fillEl.style.background = 'var(--gold)';
+      } else {
+        fillEl.style.background = '#c54545';
+      }
+      textEl.textContent = `${seconds}s`;
+      textEl.style.color = seconds <= 5 ? '#c54545' : 'var(--ink)';
+
+      if (elapsed >= ROUND_TIME_LIMIT) {
+        stopCountdown();
+        handleTimeout();
+      }
+    }
+
+    tick();  // 立即更新一次以反映已過時間
+    countdownInterval = setInterval(tick, 250);  // 250ms 更新一次比較流暢
+  }
+
+  async function handleTimeout() {
+    // 標記這題已超時，由本機觸發作廢；由雙方各自按「了解」後清掉
+    if (!state.currentRound) return;
+    const fresh = await loadState();
+    if (!fresh.currentRound || fresh.currentRound.questionIdx !== myRoundStartedQ) {
+      // 雲端已換題或被作廢，不處理
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      return;
+    }
+    if (fresh.currentRound.revealed) {
+      // 已揭曉就不算超時
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      return;
+    }
+    if (fresh.currentRound.timedOut) {
+      // 對方已先超時（或已標記），不重複觸發
+      myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+      state = fresh;
+      render();
+      return;
+    }
+    fresh.currentRound.timedOut = true;
+    fresh.currentRound.timedOutBy = myRole;
+    fresh.currentRound.timeoutAckedBy = { A: false, B: false };
+    state = fresh;
+    myRoundStartedQ = null; myRoundStartTime = null; pendingAnswer = null; pendingGuess = null;
+    await saveState();
+    // 不再彈 alert，讓畫面切到「超時」狀態（雙方都看得到）
+    render();
+  }
+
+  function renderReveal(round) {
+    const wrap = el('div');
+
+    const A = round.A;
+    const B = round.B;
+    const isMatch = A.answer === B.answer;
+    const aGotIt = A.guess === B.answer;
+    const bGotIt = B.guess === A.answer;
+
+    // Banner
+    let bannerText = '';
+    let bannerClass = 'reveal-banner';
+    if (isMatch && aGotIt && bGotIt) {
+      bannerText = '🎉 滿分！心電感應 +默契爆棚';
+      bannerClass += ' match';
+    } else if (isMatch) {
+      bannerText = '💞 兩人選一樣！同步分 +1';
+      bannerClass += ' match';
+    } else if (aGotIt && bGotIt) {
+      bannerText = '🎯 互相猜對！默契分各 +1';
+      bannerClass += ' match';
+    } else if (aGotIt || bGotIt) {
+      const who = aGotIt ? 'A' : 'B';
+      bannerText = `🎯 ${getAvatar(who)} ${state.names[who]} 猜對了！`;
+      bannerClass += ' match';
+    } else {
+      bannerText = '差一點點～再接再厲';
+    }
+
+    wrap.appendChild(el('div', { class: bannerClass }, bannerText));
+
+    // 題目
+    const qCard = el('div', { class: 'card' });
+    const catInfo = CATEGORIES[round.question.cat] || CATEGORIES.daily;
+    const catTag = el('span', {
+      style: `display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 10px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600; margin-bottom: 8px;`
+    }, catInfo.name);
+    qCard.appendChild(catTag);
+    qCard.appendChild(el('div', { class: 'question', style: 'margin-bottom: 16px;' }, round.question.q));
+
+    // 顯示每人答案
+    ['A', 'B'].forEach(role => {
+      const data = round[role];
+      const other = role === 'A' ? 'B' : 'A';
+      const otherData = round[other];
+
+      const row = el('div', { class: 'reveal-row' });
+      row.appendChild(el('div', { class: `reveal-who who-${role.toLowerCase()}`, style: `color: var(--accent-${role.toLowerCase()})` }, `${getAvatar(role)} ${state.names[role]}`));
+
+      const detail = el('div', { style: 'font-size: 13px;' });
+      detail.innerHTML = `選了 <strong>${data.answer === 'a' ? round.question.a : round.question.b}</strong><br><span style="color: var(--muted);">猜對方：${data.guess === 'a' ? round.question.a : round.question.b}</span>`;
+      row.appendChild(detail);
+
+      const correct = data.guess === otherData.answer;
+      row.appendChild(el('div', {
+        class: 'reveal-mark ' + (correct ? 'correct' : 'wrong')
+      }, correct ? '✓' : '✗'));
+
+      qCard.appendChild(row);
+    });
+
+    wrap.appendChild(qCard);
+
+    // 即時分數
+    const scoreCard = el('div', { class: 'score-grid' });
+    ['A', 'B'].forEach(role => {
+      const box = el('div', { class: 'score-box' });
+      box.appendChild(el('div', { class: 'score-label' }, `${getAvatar(role)} ${state.names[role]}`));
+      box.appendChild(el('div', { class: 'score-num', style: `color: var(--accent-${role.toLowerCase()})` },
+        `${state.scores[role].guess}`));
+      box.appendChild(el('div', { class: 'score-label', style: 'margin-top: 8px;' },
+        `默契 ${state.scores[role].guess} · 同步 ${state.scores[role].sync}`));
+      scoreCard.appendChild(box);
+    });
+    wrap.appendChild(scoreCard);
+
+    // 留言 + 想討論這題（用 history[0] 當作這題的 anchor）
+    const historyItem = state.history[0];  // 剛揭曉的這題會在最上面
+    if (historyItem) {
+      wrap.appendChild(renderHistoryActions(historyItem, true));
+    }
+
+    return wrap;
+  }
+
+  // 共用：留言 + 想討論的 UI（揭曉、歷史紀錄都會用到）
+  function renderHistoryActions(item, expanded) {
+    const wrap = el('div', { style: 'margin-bottom: 14px;' });
+
+    if (!item.messages) item.messages = [];
+    if (!item.wantDiscuss) item.wantDiscuss = { A: false, B: false };
+
+    const otherRole = myRole === 'A' ? 'B' : 'A';
+    const iWantDiscuss = item.wantDiscuss[myRole];
+    const otherWantDiscuss = item.wantDiscuss[otherRole];
+    const anyDiscuss = iWantDiscuss || otherWantDiscuss;
+
+    // 兩顆動作按鈕
+    const btnRow = el('div', { style: 'display: flex; gap: 8px; margin-bottom: 10px;' });
+
+    const msgBtn = el('button', {
+      class: 'btn btn-ghost',
+      style: 'margin: 0; padding: 10px; font-size: 12px; flex: 1;',
+      onclick: () => {
+        toggleMessageBox(item, msgArea);
+      }
+    }, item.messages.length > 0 ? `💬 留言 (${item.messages.length})` : '💬 留言給對方');
+    btnRow.appendChild(msgBtn);
+
+    const discussBtn = el('button', {
+      class: 'btn btn-ghost',
+      style: `margin: 0; padding: 10px; font-size: 12px; flex: 1; ${iWantDiscuss ? 'background: var(--soft-a); border-color: var(--accent-a); color: var(--accent-a);' : ''}`,
+      onclick: async () => {
+        // 先撈雲端最新版避免覆蓋
+        const fresh = await loadState();
+        const freshItem = findHistoryItemById(fresh, item.id);
+        if (!freshItem) return;
+        if (!freshItem.wantDiscuss) freshItem.wantDiscuss = { A: false, B: false };
+        freshItem.wantDiscuss[myRole] = !freshItem.wantDiscuss[myRole];
+        state = fresh;
+        await saveState();
+        render();
+      }
+    }, iWantDiscuss ? '🔖 已標記討論' : '🔖 想討論這題');
+    btnRow.appendChild(discussBtn);
+
+    wrap.appendChild(btnRow);
+
+    // 對方標記了「想討論」的提示
+    if (otherWantDiscuss && !iWantDiscuss) {
+      const hint = el('div', {
+        style: 'background: #fff5e6; border: 1px dashed var(--gold); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #8a6d1e; margin-bottom: 10px;'
+      }, `🔖 ${getAvatar(otherRole)} ${state.names[otherRole]} 想討論這題`);
+      wrap.appendChild(hint);
+    }
+
+    // 留言區（預設依 expanded 參數決定要不要展開；有草稿時自動展開）
+    const hasDraft = !!messageDrafts[item.id];
+    const shouldExpand = expanded || item.messages.length > 0 || hasDraft;
+    const msgArea = el('div', { style: shouldExpand ? '' : 'display: none;' });
+    wrap.appendChild(msgArea);
+    renderMessageArea(item, msgArea);
+
+    return wrap;
+  }
+
+  function toggleMessageBox(item, msgArea) {
+    if (msgArea.style.display === 'none') {
+      msgArea.style.display = '';
+    } else {
+      // 已展開且沒留言 → 收起；有留言則一直展開
+      if (item.messages.length === 0) {
+        msgArea.style.display = 'none';
+      }
+    }
+    renderMessageArea(item, msgArea);
+  }
+
+  function renderMessageArea(item, container) {
+    container.innerHTML = '';
+
+    // 訊息列表
+    item.messages.forEach(msg => {
+      const isMine = msg.by === myRole;
+      const otherRole = msg.by === 'A' ? 'B' : 'A';
+      const bubble = el('div', {
+        style: `background: ${msg.by === 'A' ? 'var(--soft-a)' : 'var(--soft-b)'}; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; color: ${msg.by === 'A' ? '#5a3a2a' : '#2f4a55'}; line-height: 1.5;`
+      });
+      const from = el('div', {
+        style: 'font-size: 11px; font-weight: 700; margin-bottom: 4px; opacity: 0.7;'
+      }, isMine ? `${getAvatar(msg.by)} 我` : `${getAvatar(msg.by)} ${state.names[msg.by]}`);
+      bubble.appendChild(from);
+      bubble.appendChild(document.createTextNode(msg.text));
+      container.appendChild(bubble);
+    });
+
+    // 輸入區
+    const inputWrap = el('div', { style: 'margin-top: 8px;' });
+    const textarea = el('textarea', {
+      placeholder: '留言給對方...',
+      style: 'width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px; font-size: 13px; font-family: inherit; resize: none; height: 56px; background: var(--bg);',
+      oninput: function() {
+        messageDrafts[item.id] = this.value;
+      }
+    });
+    // 恢復草稿
+    if (messageDrafts[item.id]) {
+      textarea.value = messageDrafts[item.id];
+    }
+    inputWrap.appendChild(textarea);
+
+    const sendBtn = el('button', {
+      class: 'btn',
+      style: 'margin-top: 6px; padding: 10px; font-size: 13px;',
+      onclick: async () => {
+        const text = textarea.value.trim();
+        if (!text) return;
+        sendBtn.disabled = true;
+        sendBtn.textContent = '送出中...';
+
+        const fresh = await loadState();
+        const freshItem = findHistoryItemById(fresh, item.id);
+        if (!freshItem) {
+          alert('找不到這題的紀錄');
+          sendBtn.disabled = false;
+          sendBtn.textContent = '送出';
+          return;
+        }
+        if (!freshItem.messages) freshItem.messages = [];
+        freshItem.messages.push({
+          by: myRole,
+          text: text.slice(0, 300),
+          at: new Date().toISOString()
+        });
+        state = fresh;
+        delete messageDrafts[item.id];  // 送出後清掉草稿
+        await saveState();
+        render();
+      }
+    }, '送出');
+    inputWrap.appendChild(sendBtn);
+
+    container.appendChild(inputWrap);
+  }
+
+  // 用 id 找到對應的 history item
+  function findHistoryItemById(stateObj, id) {
+    if (!stateObj.history) return null;
+    return stateObj.history.find(h => h.id === id) || null;
+  }
+
+  function renderScores() {
+    const wrap = el('div');
+
+    const tip = el('div', { class: 'info-tip' });
+    tip.innerHTML = '<strong>默契分</strong>：猜對方會選什麼，猜中 +1<br><strong>同步分</strong>：兩人選了同一個答案，各 +1';
+    wrap.appendChild(tip);
+
+    ['A', 'B'].forEach(role => {
+      const card = el('div', { class: 'card' });
+      card.appendChild(el('div', {
+        style: `font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--accent-${role.toLowerCase()})`
+      }, `${getAvatar(role)} ${state.names[role]}`));
+
+      const grid = el('div', { class: 'score-grid', style: 'margin-bottom: 0;' });
+
+      const b1 = el('div', { class: 'score-box' });
+      b1.appendChild(el('div', { class: 'score-num' }, `${state.scores[role].guess}`));
+      b1.appendChild(el('div', { class: 'score-label' }, '默契分'));
+      grid.appendChild(b1);
+
+      const b2 = el('div', { class: 'score-box' });
+      b2.appendChild(el('div', { class: 'score-num' }, `${state.scores[role].sync}`));
+      b2.appendChild(el('div', { class: 'score-label' }, '同步分'));
+      grid.appendChild(b2);
+
+      card.appendChild(grid);
+      wrap.appendChild(card);
+    });
+
+    // 總共玩過幾題
+    const stats = el('div', { class: 'card', style: 'text-align: center;' });
+    stats.appendChild(el('div', { class: 'label' }, '累計戰績'));
+    stats.appendChild(el('div', { style: 'font-size: 28px; font-weight: 700; margin: 6px 0;' },
+      `${state.history.length} 題`));
+    stats.appendChild(el('div', { style: 'font-size: 12px; color: var(--muted);' },
+      `自訂題目 ${state.customQuestions.length} 題`));
+    wrap.appendChild(stats);
+
+    // Reset button
+    const resetBtn = el('button', {
+      class: 'btn btn-ghost',
+      onclick: async () => {
+        if (await customConfirm('確定要重置所有分數嗎？歷史紀錄和題目會保留。', { danger: true, okText: '重置' })) {
+          const fresh = await loadState();
+          state = fresh;
+          state.scores = { A: {guess: 0, sync: 0}, B: {guess: 0, sync: 0} };
+          await saveState();
+          render();
+        }
+      }
+    }, '重置分數');
+    wrap.appendChild(resetBtn);
+
+    return wrap;
+  }
+
+  function renderHistory() {
+    const wrap = el('div');
+
+    if (state.history.length === 0) {
+      wrap.appendChild(el('div', { class: 'empty' }, '還沒有任何紀錄'));
+      return wrap;
+    }
+
+    state.history.forEach(item => {
+      // 確保 id 存在（舊資料相容）
+      if (!item.id) item.id = `legacy_${item.date}`;
+
+      const card = el('div', { class: 'history-item' });
+
+      const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+      const topRow = el('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 6px;' });
+
+      const leftPills = el('div', { style: 'display: flex; gap: 4px; align-items: center; flex-wrap: wrap;' });
+      const catTag = el('span', {
+        style: `font-size: 10px; padding: 2px 8px; border-radius: 8px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600;`
+      }, catInfo.name);
+      leftPills.appendChild(catTag);
+
+      // 「想討論」標記
+      const wd = item.wantDiscuss || {};
+      if (wd.A || wd.B) {
+        const dpill = el('span', {
+          style: 'font-size: 10px; padding: 2px 8px; border-radius: 8px; background: #fff5e6; color: #8a6d1e; font-weight: 600;'
+        }, '🔖 想討論');
+        leftPills.appendChild(dpill);
+      }
+      // 留言數標記
+      const msgs = item.messages || [];
+      if (msgs.length > 0) {
+        const mpill = el('span', {
+          style: 'font-size: 10px; padding: 2px 8px; border-radius: 8px; background: var(--soft-b); color: var(--accent-b); font-weight: 600;'
+        }, `💬 ${msgs.length}`);
+        leftPills.appendChild(mpill);
+      }
+
+      topRow.appendChild(leftPills);
+      const date = new Date(item.date);
+      const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+      topRow.appendChild(el('span', { style: 'font-size: 11px; color: var(--muted); white-space: nowrap;' }, dateStr));
+      card.appendChild(topRow);
+
+      card.appendChild(el('div', { class: 'history-q' }, item.question.q));
+
+      const detail = el('div', { class: 'history-detail' });
+      const isMatch = item.A.answer === item.B.answer;
+      const aGot = item.A.guess === item.B.answer;
+      const bGot = item.B.guess === item.A.answer;
+
+      detail.innerHTML = `
+        <div><strong style="color: var(--accent-a)">${getAvatar('A')} ${state.names.A}</strong>：選${item.A.answer === 'a' ? item.question.a : item.question.b}　猜${item.A.guess === 'a' ? item.question.a : item.question.b} ${aGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
+        <div><strong style="color: var(--accent-b)">${getAvatar('B')} ${state.names.B}</strong>：選${item.B.answer === 'a' ? item.question.a : item.question.b}　猜${item.B.guess === 'a' ? item.question.a : item.question.b} ${bGot ? '<span style="color: var(--green)">✓</span>' : ''}</div>
+        <div style="margin-top: 6px;">
+          ${aGot ? '<span class="pill pill-guess">A 默契+1</span>' : ''}
+          ${bGot ? '<span class="pill pill-guess">B 默契+1</span>' : ''}
+          ${isMatch ? '<span class="pill pill-sync">同步+1</span>' : ''}
+        </div>
+      `;
+      card.appendChild(detail);
+
+      // 留言 + 想討論
+      card.appendChild(el('div', { style: 'margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);' }));
+      card.appendChild(renderHistoryActions(item, false));
+
+      wrap.appendChild(card);
+    });
+
+    return wrap;
+  }
+
+  // ============ 每週回顧 ============
+  // 取得指定週次的開始/結束（週一為一週開始）
+  function getWeekRange(weekOffset) {
+    // weekOffset: 0=本週, -1=上週, etc
+    const now = new Date();
+    const day = now.getDay();  // 0=Sun, 1=Mon, ..., 6=Sat
+    const daysFromMonday = day === 0 ? 6 : day - 1;
+    const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+    const start = new Date(thisMonday);
+    start.setDate(start.getDate() + weekOffset * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return { start, end };
+  }
+
+  function formatDate(d) {
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  }
+
+  let reviewWeekOffset = 0;  // 0 = 本週, -1 = 上週
+
+  function renderReview() {
+    const wrap = el('div');
+
+    const { start, end } = getWeekRange(reviewWeekOffset);
+    const endDisplay = new Date(end);
+    endDisplay.setDate(endDisplay.getDate() - 1);  // 顯示週日（最後一天）
+
+    // 篩選這週的歷史
+    const weekItems = (state.history || []).filter(h => {
+      const d = new Date(h.date);
+      return d >= start && d < end;
+    });
+
+    // 切週按鈕
+    const weekNav = el('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 8px;' });
+
+    const prevBtn = el('button', {
+      style: 'background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; cursor: pointer; font-family: inherit;',
+      onclick: () => { reviewWeekOffset--; render(); }
+    }, '←');
+    weekNav.appendChild(prevBtn);
+
+    const label = reviewWeekOffset === 0 ? '本週' : reviewWeekOffset === -1 ? '上週' : `${-reviewWeekOffset} 週前`;
+    weekNav.appendChild(el('div', {
+      style: 'flex: 1; text-align: center; font-size: 13px; font-weight: 600;'
+    }, label));
+
+    const nextBtn = el('button', {
+      style: `background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; cursor: pointer; font-family: inherit; ${reviewWeekOffset >= 0 ? 'opacity: 0.3; cursor: not-allowed;' : ''}`,
+      onclick: () => { if (reviewWeekOffset < 0) { reviewWeekOffset++; render(); } }
+    }, '→');
+    weekNav.appendChild(nextBtn);
+    wrap.appendChild(weekNav);
+
+    // Banner 卡片
+    const banner = el('div', {
+      style: 'background: linear-gradient(135deg, var(--soft-a), #f7dde5); border-radius: 18px; padding: 18px; text-align: center; margin-bottom: 14px;'
+    });
+    banner.appendChild(el('div', {
+      style: 'font-size: 13px; color: var(--accent-a); font-weight: 600; letter-spacing: 1px;'
+    }, reviewWeekOffset === 0 ? '本週回顧' : '回顧'));
+    banner.appendChild(el('div', {
+      style: 'font-size: 16px; font-weight: 700; margin-top: 4px; color: #5a3a2a;'
+    }, `${formatDate(start)} – ${formatDate(endDisplay)}`));
+    wrap.appendChild(banner);
+
+    // 沒有資料
+    if (weekItems.length === 0) {
+      wrap.appendChild(el('div', { class: 'empty' }, '這週還沒有玩過題目'));
+      return wrap;
+    }
+
+    // 統計
+    let aGuessCount = 0, bGuessCount = 0, syncCount = 0;
+    weekItems.forEach(h => {
+      if (h.A.guess === h.B.answer) aGuessCount++;
+      if (h.B.guess === h.A.answer) bGuessCount++;
+      if (h.A.answer === h.B.answer) syncCount++;
+    });
+    const totalAttempts = weekItems.length * 2;  // 每題兩人各猜一次
+    const guessHits = aGuessCount + bGuessCount;
+    const hitRate = totalAttempts > 0 ? Math.round((guessHits / totalAttempts) * 100) : 0;
+
+    const grid = el('div', { class: 'score-grid' });
+
+    const b1 = el('div', { class: 'score-box' });
+    b1.appendChild(el('div', { class: 'score-num', style: 'color: var(--accent-a);' }, `${weekItems.length}`));
+    b1.appendChild(el('div', { class: 'score-label' }, '本週題目'));
+    grid.appendChild(b1);
+
+    const b2 = el('div', { class: 'score-box' });
+    b2.appendChild(el('div', { class: 'score-num', style: 'color: var(--green);' }, `${hitRate}%`));
+    b2.appendChild(el('div', { class: 'score-label' }, '本週命中率'));
+    grid.appendChild(b2);
+    wrap.appendChild(grid);
+
+    // 同步分 + 個人猜中
+    const detail = el('div', { class: 'card' });
+    detail.appendChild(el('div', { class: 'label' }, '本週分數變化'));
+    detail.appendChild(el('div', {
+      style: 'font-size: 13px; line-height: 1.9;'
+    }));
+    detail.lastChild.innerHTML = `
+      <div>${getAvatar('A')} <strong style="color:var(--accent-a)">${escapeHtml(state.names.A)}</strong>：默契 +${aGuessCount}　同步 +${syncCount}</div>
+      <div>${getAvatar('B')} <strong style="color:var(--accent-b)">${escapeHtml(state.names.B)}</strong>：默契 +${bGuessCount}　同步 +${syncCount}</div>
+    `;
+    wrap.appendChild(detail);
+
+    // 最有默契的題目（兩人都猜對 或 兩人選一樣）
+    const matchTopics = weekItems.filter(h => {
+      const aG = h.A.guess === h.B.answer;
+      const bG = h.B.guess === h.A.answer;
+      const sync = h.A.answer === h.B.answer;
+      return (aG && bG) || sync;
+    });
+    if (matchTopics.length > 0) {
+      const matchCard = el('div', { class: 'card' });
+      matchCard.appendChild(el('div', { class: 'label' }, `本週最有默契（${matchTopics.length}）`));
+      matchTopics.slice(0, 3).forEach(item => {
+        const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+        const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+        row.innerHTML = `<span style="display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:${catInfo.bg};color:${catInfo.color};font-weight:600;margin-bottom:4px;">${catInfo.name}</span><div style="font-weight:600;margin-top:2px;">${escapeHtml(item.question.q)}</div>`;
+        matchCard.appendChild(row);
+      });
+      if (matchCard.lastChild) matchCard.lastChild.style.borderBottom = 'none';
+      wrap.appendChild(matchCard);
+    }
+
+    // 最意外的題目（兩人選不同 且 兩人都猜錯）
+    const surpriseTopics = weekItems.filter(h => {
+      const aG = h.A.guess === h.B.answer;
+      const bG = h.B.guess === h.A.answer;
+      const sync = h.A.answer === h.B.answer;
+      return !sync && !aG && !bG;
+    });
+    if (surpriseTopics.length > 0) {
+      const surpriseCard = el('div', { class: 'card' });
+      surpriseCard.appendChild(el('div', { class: 'label' }, `本週最意外（${surpriseTopics.length}）`));
+      surpriseTopics.slice(0, 3).forEach(item => {
+        const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+        const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+        const aChose = item.A.answer === 'a' ? item.question.a : item.question.b;
+        const bChose = item.B.answer === 'a' ? item.question.a : item.question.b;
+        row.innerHTML = `<span style="display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:${catInfo.bg};color:${catInfo.color};font-weight:600;margin-bottom:4px;">${catInfo.name}</span><div style="font-weight:600;margin-top:2px;">${escapeHtml(item.question.q)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${getAvatar('A')} ${escapeHtml(aChose)}　${getAvatar('B')} ${escapeHtml(bChose)}</div>`;
+        surpriseCard.appendChild(row);
+      });
+      if (surpriseCard.lastChild) surpriseCard.lastChild.style.borderBottom = 'none';
+      wrap.appendChild(surpriseCard);
+    }
+
+    // 想討論的題目
+    const wantDiscussTopics = weekItems.filter(h => {
+      const wd = h.wantDiscuss || {};
+      return wd.A || wd.B;
+    });
+    if (wantDiscussTopics.length > 0) {
+      const wdCard = el('div', { class: 'card' });
+      wdCard.appendChild(el('div', { class: 'label' }, `本週想討論（${wantDiscussTopics.length}）`));
+      wantDiscussTopics.forEach(item => {
+        const catInfo = CATEGORIES[item.question.cat] || CATEGORIES.daily;
+        const row = el('div', { style: 'padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px;' });
+        row.innerHTML = `<span style="display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:${catInfo.bg};color:${catInfo.color};font-weight:600;margin-bottom:4px;">${catInfo.name}</span><div style="font-weight:600;margin-top:2px;">🔖 ${escapeHtml(item.question.q)}</div>`;
+        wdCard.appendChild(row);
+      });
+      if (wdCard.lastChild) wdCard.lastChild.style.borderBottom = 'none';
+      wrap.appendChild(wdCard);
+    }
+
+    return wrap;
+  }
+
+  function renderAdd() {
+    const wrap = el('div');
+
+    const tip = el('div', { class: 'info-tip' });
+    tip.innerHTML = '加進來的題目會混進題庫，未來抽題會抽到。建議出兩個各有支持者、不要太極端的選項，這樣猜起來才有意思 😋';
+    wrap.appendChild(tip);
+
+    const card = el('div', { class: 'card' });
+    card.appendChild(el('div', { class: 'label' }, '新題目'));
+
+    const qInput = el('input', { class: 'input', placeholder: '題目，例如：晚餐想吃什麼類型' });
+    const aInput = el('input', { class: 'input', placeholder: 'A 選項，例如：日式' });
+    const bInput = el('input', { class: 'input', placeholder: 'B 選項，例如：泰式' });
+
+    card.appendChild(qInput);
+    card.appendChild(aInput);
+    card.appendChild(bInput);
+
+    // 分類選擇
+    card.appendChild(el('div', { class: 'label', style: 'margin-top: 4px;' }, '分類'));
+    let selectedCat = 'daily';
+    const catGrid = el('div', { style: 'display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;' });
+    Object.entries(CATEGORIES).forEach(([key, info]) => {
+      const btn = el('button', {
+        style: `padding: 8px 4px; border-radius: 8px; border: 1.5px solid ${key === selectedCat ? info.color : 'var(--line)'}; background: ${key === selectedCat ? info.bg : 'var(--bg)'}; color: ${key === selectedCat ? info.color : 'var(--muted)'}; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;`,
+        onclick: () => {
+          selectedCat = key;
+          catGrid.querySelectorAll('button').forEach((b, i) => {
+            const k = Object.keys(CATEGORIES)[i];
+            const ci = CATEGORIES[k];
+            const isSel = k === selectedCat;
+            b.style.borderColor = isSel ? ci.color : 'var(--line)';
+            b.style.background = isSel ? ci.bg : 'var(--bg)';
+            b.style.color = isSel ? ci.color : 'var(--muted)';
+          });
+        }
+      }, info.name);
+      catGrid.appendChild(btn);
+    });
+    card.appendChild(catGrid);
+
+    const submitBtn = el('button', {
+      class: 'btn',
+      onclick: async () => {
+        const q = qInput.value.trim();
+        const a = aInput.value.trim();
+        const b = bInput.value.trim();
+        if (!q || !a || !b) {
+          alert('三個欄位都要填喔');
+          return;
+        }
+        const fresh = await loadState();
+        state = fresh;
+        if (!state.customQuestions) state.customQuestions = [];
+        state.customQuestions.push({ q, a, b, cat: selectedCat, addedBy: myRole });
+        await saveState();
+        qInput.value = '';
+        aInput.value = '';
+        bInput.value = '';
+        alert('加好了！');
+        render();
+      }
+    }, '加入題庫');
+    card.appendChild(submitBtn);
+    wrap.appendChild(card);
+
+    // 列出自訂題目
+    if (state.customQuestions.length > 0) {
+      const listCard = el('div', { class: 'card' });
+      listCard.appendChild(el('div', { class: 'label' }, `你們加的題目（${state.customQuestions.length}）`));
+      state.customQuestions.forEach((q, idx) => {
+        const item = el('div', {
+          style: 'padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: start; gap: 10px;'
+        });
+
+        const catInfo = CATEGORIES[q.cat] || CATEGORIES.daily;
+        const text = el('div', { style: 'flex: 1; font-size: 13px;' });
+        text.innerHTML = `<span style="display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 6px; background: ${catInfo.bg}; color: ${catInfo.color}; font-weight: 600; margin-bottom: 4px;">${catInfo.name}</span><div style="font-weight: 600; margin-bottom: 3px;">${escapeHtml(q.q)}</div><div style="color: var(--muted);">${escapeHtml(q.a)} / ${escapeHtml(q.b)}</div>`;
+        item.appendChild(text);
+
+        const del = el('button', {
+          class: 'btn btn-ghost btn-small',
+          onclick: async () => {
+            if (await customConfirm('刪掉這題？', { danger: true, okText: '刪除' })) {
+              // 用題目內容比對找到對應的，不用 index（對方可能剛加題、index 會錯位）
+              const fresh = await loadState();
+              state = fresh;
+              if (!state.customQuestions) state.customQuestions = [];
+              const realIdx = state.customQuestions.findIndex(cq =>
+                cq.q === q.q && cq.a === q.a && cq.b === q.b
+              );
+              if (realIdx >= 0) {
+                state.customQuestions.splice(realIdx, 1);
+                await saveState();
+              }
+              render();
+            }
+          }
+        }, '刪');
+        item.appendChild(del);
+
+        listCard.appendChild(item);
+      });
+      wrap.appendChild(listCard);
+    }
+
+    return wrap;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // ============ 啟動 ============
+  async function init() {
+    roomCode = loadRoom();
+    myRole = loadRole();
+
+    if (!roomCode) {
+      // 還沒選房間 → 顯示房間登入畫面
+      state = defaultState();
+      render();
+      return;
+    }
+
+    // 已有房間 → 訂閱 Firestore 即時更新
+    await connectRoom(roomCode);
+  }
+
+  async function connectRoom(code) {
+    roomCode = code;
+    saveRoom(code);
+
+    // 先初始載入一次
+    state = await loadState();
+
+    // 如果房間是空的（新建），寫入初始狀態
+    const snap = await getDoc(doc(db, 'rooms', code));
+    if (!snap.exists()) {
+      await saveState();
+    }
+
+    // 自動恢復身分：如果本機 localStorage 記錄了這個房間的舊身分，
+    // 而雲端也還掛著這個身分（claimedRoles[role] = true），就自動沿用
+    const savedRole = loadRole();
+    if (savedRole && state.claimedRoles && state.claimedRoles[savedRole]) {
+      myRole = savedRole;
+    } else if (savedRole && (!state.claimedRoles || !state.claimedRoles[savedRole])) {
+      // 雲端沒有這個 claim（可能是房間被重置），但本機還記得 → 自動補回
+      // 再撈一次最新確保不覆蓋對方
+      const fresh = await loadState();
+      state = fresh;
+      if (!state.claimedRoles) state.claimedRoles = { A: false, B: false };
+      state.claimedRoles[savedRole] = true;
+      myRole = savedRole;
+      await saveState();
+    }
+
+    // 即時訂閱：對方一寫資料就馬上同步到本機
+    if (unsubscribe) unsubscribe();
+    unsubscribe = onSnapshot(doc(db, 'rooms', code), (docSnap) => {
+      if (!docSnap.exists()) return;
+      const fresh = docSnap.data();
+
+      // 防呆：如果本機已經把自己的答案寫進 currentRound、但雲端版本卻沒有
+      // （表示對方剛寫了一筆但雲端是他寫之前的快照、沒包含我），這種情況極罕見，
+      // 但我們不應該讓本機的答案被「不完整的雲端版本」蓋掉。
+      // 解法：如果本機 currentRound[myRole] 有值、雲端的同回合沒有，就保留本機的答案。
+      if (state.currentRound && fresh.currentRound &&
+          state.currentRound.questionIdx === fresh.currentRound.questionIdx) {
+        if (state.currentRound[myRole] && !fresh.currentRound[myRole]) {
+          fresh.currentRound[myRole] = state.currentRound[myRole];
+        }
+      }
+
+      // 自動揭曉：本機沒有揭曉、雲端有兩人答案也沒揭曉 → 由本機觸發揭曉計分
+      if (state.currentRound && fresh.currentRound &&
+          fresh.currentRound.A && fresh.currentRound.B &&
+          !fresh.currentRound.revealed && !state.currentRound.revealed) {
+        state = fresh;
+        doReveal();
+        saveState();  // 寫回 revealed 狀態，對方會立刻收到
+        render();
+      } else {
+        state = fresh;
+        render();
+      }
+    });
+
+    render();
+  }
+
+  init();
+</script>
+</body>
+</html>
